@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { CalendarPlus, Copy, RefreshCw } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
+	import { copyText } from '$lib/clipboard';
 	import Button from './Button.svelte';
 
 	let { token, appUrl }: { token: string | null; appUrl: string | null } = $props();
@@ -14,12 +15,8 @@
 	const webcal = $derived(url.replace(/^https?:/, 'webcal:'));
 
 	async function copy() {
-		try {
-			await navigator.clipboard.writeText(url);
-			toast.success('Link copied');
-		} catch {
-			toast.error('Copy failed. Select the link and copy it by hand.');
-		}
+		if (await copyText(url)) toast.success('Link copied');
+		else toast.error('Copy failed. Select the link and copy it by hand.');
 	}
 </script>
 

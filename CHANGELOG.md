@@ -7,6 +7,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Installable app: web manifest, app icons (including maskable and Apple touch icons), iOS
+  full-screen mode, and an "Install the app" section in Settings.
+- Offline support: the app shell is cached, recently opened pages open offline, posters are cached,
+  and other pages show an offline screen. Cached pages are cleared on sign-out.
+- Appearance setting: System, Dark or Light, with no flash on load.
+- Episode details sheet (a bottom sheet on phones) with watch actions.
+- Page transitions, with the tapped poster morphing into the title page; a navigation progress bar;
+  a glow in the poster's color on title pages; the Inter font.
+- Reduced-motion support and visible keyboard focus.
+- End-to-end tests (Playwright, desktop and phone) that need no network access, run in CI.
+
+### Fixed
+
+- Tapping a search result right after typing no longer jumps back to the search page.
 - History: a day-by-day timeline of everything you watched, with filters, "change date" and
   "remove", and paging.
 - Upcoming: episodes and releases for the next 30 days, grouped by day, with exact times when known,

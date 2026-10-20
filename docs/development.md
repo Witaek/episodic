@@ -31,6 +31,22 @@ Database migrations run automatically on server start. The database is created a
 | `npm run db:generate`             | Create a migration after editing `src/lib/server/db/schema.ts` |
 | `npm run db:studio`               | Browse the database in Drizzle Studio                          |
 
+## End-to-end tests
+
+`npm run test:e2e` builds the app and starts it with a fresh database in `test-results/e2e-data`.
+Background jobs are disabled. `tests/e2e/global-setup.ts` seeds AniList responses for a fixture
+show into the response cache, so the tests need no network access and no TMDB token. The tests
+cover:
+
+- first-run setup and sign-in
+- search, adding to the library, marking episodes
+- Up Next, Upcoming and History
+- separation between users
+- the installed-app basics: manifest, service worker and offline pages
+
+Each runs at desktop and phone (Pixel 7) sizes. CI runs them on every push and uploads traces when
+a test fails.
+
 ## Changing the database
 
 1. Edit `src/lib/server/db/schema.ts`.

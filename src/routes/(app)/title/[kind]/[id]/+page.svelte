@@ -12,8 +12,11 @@
 	} from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import type { Episode } from '$lib/catalog/types';
+	import { posterTint } from '$lib/tint';
+	import { HERO_POSTER } from '$lib/transitions';
 	import { airingSummary } from '$lib/catalog/airing';
-	import EpisodeRow from '$lib/components/EpisodeRow.svelte';
+	import EpisodeRow, { type EpisodeActions } from '$lib/components/EpisodeRow.svelte';
+	import EpisodeSheet from '$lib/components/EpisodeSheet.svelte';
 	import Img from '$lib/components/Img.svelte';
 	import MediaRow from '$lib/components/MediaRow.svelte';
 	import PersonCard from '$lib/components/PersonCard.svelte';
@@ -33,6 +36,17 @@
 	let overviewExpanded = $state(false);
 
 	const title = $derived(data.setupNeeded ? null : data.title);
+
+	// A glow in the poster's color behind the page header.
+	let tint = $state<string | null>(null);
+	$effect(() => {
+		const poster = title?.poster;
+		tint = poster?.color ?? null;
+		if (!poster || poster.color) return;
+		let current = true;
+		posterTint(poster.url).then((color) => current && (tint = color));
+		return () => (current = false);
+	});
 
 	const definition = $derived(title ? mediaType(title.mediaType) : null);
 	const tracker = $derived(
@@ -87,6 +101,29 @@
 		} finally {
 			refreshing = false;
 		}
+	}
+
+	// Episode details sheet
+	let sheet = $state<{ open: boolean; episode: Episode | null; actions: EpisodeActions | null }>({
+		open: false,
+		episode: null,
+		actions: null
+	});
+
+	function episodeActions(episode: Episode): EpisodeActions | undefined {
+		const t = tracker;
+		if (!t) return undefined;
+		const { seasonNumber: season, number } = episode;
+		const code = formatEpisodeCode({ season, number });
+		const target = { type: 'episode' as const, season, number };
+		return {
+			toggle: () => t.toggleEpisode(season, number),
+			upTo: () => t.watch({ type: 'upTo', season, number }),
+			pickDate: () =>
+				pickDate(target, `${code} · ${episode.name ?? ''}`, t.plays(season, number) > 0),
+			rewatch: () => t.watch(target, { rewatch: true }),
+			unwatch: () => t.unwatch(target, `${code} marked unwatched`)
+		};
 	}
 
 	function pickDate(target: WatchTarget, label: string, rewatch = false) {
@@ -160,6 +197,13 @@
 {:else}
 	<!-- Hero -->
 	<div class="relative">
+		{#if tint}
+			<div
+				class="pointer-events-none absolute inset-x-0 top-40 -z-10 h-[40rem] opacity-35 transition-opacity duration-700"
+				style:background="radial-gradient(60% 50% at 30% 40%, {tint}, transparent 70%)"
+				aria-hidden="true"
+			></div>
+		{/if}
 		<div class="relative h-64 overflow-hidden sm:h-80 md:h-[26rem] lg:h-[30rem]">
 			<Img
 				image={title.backdrop ?? title.poster}
@@ -185,6 +229,7 @@
 			<Img
 				image={title.poster}
 				alt="{title.name} poster"
+				transitionName={HERO_POSTER}
 				sizes="(min-width: 768px) 224px, 112px"
 				eager
 				class="aspect-[2/3] w-28 shrink-0 self-end rounded-xl shadow-2xl ring-1 ring-white/10 sm:w-36 md:w-56"
@@ -420,38 +465,18 @@
 						{/if}
 						<div class="divide-y divide-border/60">
 							{#each season.episodes as episode (episode.id)}
-								{@const code = formatEpisodeCode({
-									season: episode.seasonNumber,
-									number: episode.number
-								})}
-								{@const target = {
-									type: 'episode' as const,
-									season: episode.seasonNumber,
-									number: episode.number
-								}}
+								{@const actions = episodeActions(episode)}
 								<EpisodeRow
 									episode={withAirTime(episode)}
 									{showStill}
 									plays={tracker?.plays(episode.seasonNumber, episode.number)}
-									actions={tracker
-										? {
-												toggle: () => tracker.toggleEpisode(episode.seasonNumber, episode.number),
-												upTo: () =>
-													tracker.watch({
-														type: 'upTo',
-														season: episode.seasonNumber,
-														number: episode.number
-													}),
-												pickDate: () =>
-													pickDate(
-														target,
-														`${code} · ${episode.name ?? ''}`,
-														tracker.plays(episode.seasonNumber, episode.number) > 0
-													),
-												rewatch: () => tracker.watch(target, { rewatch: true }),
-												unwatch: () => tracker.unwatch(target, `${code} marked unwatched`)
-											}
-										: undefined}
+									{actions}
+									onopen={() =>
+										(sheet = {
+											open: true,
+											episode: withAirTime(episode),
+											actions: actions ?? null
+										})}
 								/>
 							{/each}
 						</div>
@@ -522,4 +547,14 @@
 			void tracker.watch(dateDialog.target, { watchedAt: date, rewatch: dateDialog.rewatch });
 		}
 	}}
+/>
+
+<EpisodeSheet
+	bind:open={sheet.open}
+	episode={sheet.episode}
+	showName={title?.name ?? ''}
+	plays={sheet.episode && tracker
+		? tracker.plays(sheet.episode.seasonNumber, sheet.episode.number)
+		: 0}
+	actions={sheet.actions}
 />

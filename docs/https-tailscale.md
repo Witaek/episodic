@@ -67,10 +67,12 @@ Make sure Tailscale is connected on the phone, and open your `https://…ts.net`
 - **iPhone or iPad (Safari):** tap **Share**, then **Add to Home Screen**, then **Add**.
 - **Android (Chrome):** tap **⋮**, then **Install app** (or **Add to Home screen**).
 
-Episodic then opens full-screen from its own icon, like a native app.
+Episodic then opens full-screen from its own icon, like a native app. **Settings → Install the
+app** shows the right steps for the device you're on, and an **Install** button where the browser
+supports one.
 
-> The installable app (PWA) ships in phase 4. Until then, the page opens as a normal browser
-> bookmark.
+The installed app keeps working offline for pages you opened recently, and shows an _offline_
+screen for the rest. Marking episodes needs a connection.
 
 ## Troubleshooting
 

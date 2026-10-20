@@ -1,9 +1,17 @@
 <script lang="ts">
-	let { percent, class: className = '' }: { percent: number; class?: string } = $props();
+	let {
+		percent,
+		onImage = false,
+		class: className = ''
+	}: {
+		percent: number;
+		/** Drawn over artwork (light track). */ onImage?: boolean;
+		class?: string;
+	} = $props();
 </script>
 
 <div
-	class="h-1.5 overflow-hidden rounded-full bg-white/15 {className}"
+	class="h-1.5 overflow-hidden rounded-full {onImage ? 'bg-white/25' : 'bg-fg/15'} {className}"
 	role="progressbar"
 	aria-valuemin={0}
 	aria-valuemax={100}

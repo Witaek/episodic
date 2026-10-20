@@ -1,0 +1,41 @@
+{
+	"name": "Episodic",
+	"short_name": "Episodic",
+	"description": "Track your TV shows, anime and movies.",
+	"id": "/",
+	"start_url": "/?source=pwa",
+	"scope": "/",
+	"display": "standalone",
+	"orientation": "any",
+	"background_color": "#0b0b12",
+	"theme_color": "#0b0b12",
+	"categories": ["entertainment", "lifestyle"],
+	"icons": [
+		{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+		{ "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+		{
+			"src": "/icons/maskable-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		},
+		{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+	],
+	"shortcuts": [
+		{
+			"name": "Up next",
+			"url": "/",
+			"icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+		},
+		{
+			"name": "Search",
+			"url": "/search",
+			"icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+		},
+		{
+			"name": "Upcoming",
+			"url": "/upcoming",
+			"icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+		}
+	]
+}

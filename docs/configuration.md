@@ -40,8 +40,9 @@ If you see **"Cross-site request blocked"**, add the address shown in your brows
 
 These are set by the image. You normally don't change them.
 
-| Variable          | Value   | Description                                              |
-| ----------------- | ------- | -------------------------------------------------------- |
-| `DATA_DIR`        | `/data` | Data path inside the container; map a host folder to it. |
-| `PORT`            | `3000`  | Port the app listens on inside the container.            |
-| `BODY_SIZE_LIMIT` | `50M`   | Maximum upload size (used later for restores).           |
+| Variable          | Value   | Description                                                                                              |
+| ----------------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| `DATA_DIR`        | `/data` | Data path inside the container; map a host folder to it.                                                 |
+| `PORT`            | `3000`  | Port the app listens on inside the container.                                                            |
+| `BODY_SIZE_LIMIT` | `50M`   | Maximum upload size (used later for restores).                                                           |
+| `DISABLE_JOBS`    | unset   | Development and tests only: `1` stops background jobs, so the app makes no outgoing requests on its own. |

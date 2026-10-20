@@ -24,7 +24,12 @@ const schema = z.object({
 	TZ: z.string().default('UTC'),
 	BACKUP_RETENTION_DAYS: z.coerce.number().int().min(0).default(14),
 	ADMIN_USERNAME: z.preprocess(blankToUndefined, z.string().optional()),
-	ADMIN_PASSWORD: z.preprocess(blankToUndefined, z.string().optional())
+	ADMIN_PASSWORD: z.preprocess(blankToUndefined, z.string().optional()),
+	/** Development/testing: don't start background jobs (no outgoing requests). */
+	DISABLE_JOBS: z
+		.string()
+		.optional()
+		.transform((v) => v === '1' || v === 'true')
 });
 
 export type Config = z.infer<typeof schema> & { dataDir: string; databasePath: string };

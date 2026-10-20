@@ -13,9 +13,11 @@ import { closeDb, runMigrations } from '$lib/server/db/client';
 import { startJobs } from '$lib/server/jobs';
 import { stopJobs } from '$lib/server/jobs/scheduler';
 import { isRequestOriginAllowed } from '$lib/server/security';
+import { THEME_COLORS, THEME_COOKIE, parseTheme } from '$lib/theme';
 
 export const init: ServerInit = async () => {
-	const { databasePath, APP_URL, TMDB_ACCESS_TOKEN, ADMIN_USERNAME, ADMIN_PASSWORD } = config();
+	const { databasePath, APP_URL, TMDB_ACCESS_TOKEN, ADMIN_USERNAME, ADMIN_PASSWORD, DISABLE_JOBS } =
+		config();
 	runMigrations();
 	console.info(`[episodic] v${__APP_VERSION__} database ready at ${databasePath}`);
 	if (await seedAdminFromEnv(ADMIN_USERNAME, ADMIN_PASSWORD)) {
@@ -26,7 +28,8 @@ export const init: ServerInit = async () => {
 	}
 	if (APP_URL) console.info(`[episodic] public URL: ${APP_URL}`);
 
-	startJobs();
+	if (DISABLE_JOBS) console.warn('[episodic] background jobs are disabled (DISABLE_JOBS)');
+	else startJobs();
 
 	// adapter-node emits this after it stops accepting requests (SIGTERM/SIGINT).
 	process.once('sveltekit:shutdown', () => {
@@ -86,5 +89,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		redirect(303, target === '/' ? '/login' : `/login?redirectTo=${encodeURIComponent(target)}`);
 	}
 
-	return resolve(event);
+	const theme = parseTheme(event.cookies.get(THEME_COOKIE));
+	return resolve(event, {
+		transformPageChunk: ({ html }) =>
+			html
+				.replace('%episodic.theme%', theme)
+				.replace('%episodic.themeColor%', THEME_COLORS[theme === 'light' ? 'light' : 'dark'])
+	});
 };

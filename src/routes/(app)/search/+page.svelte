@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { navigating } from '$app/state';
 	import { LoaderCircle, Search, X } from '@lucide/svelte';
 	import type { SearchFilter } from '$lib/catalog/types';
@@ -28,6 +28,11 @@
 		const search = params.toString();
 		return search ? `/search?${search}` : '/search';
 	}
+
+	// A pending URL update must not pull the user back here after they open a result.
+	beforeNavigate(({ to }) => {
+		if (to?.url.pathname !== '/search') clearTimeout(timer);
+	});
 
 	function update(q: string, filter: SearchFilter, delay = 300) {
 		clearTimeout(timer);

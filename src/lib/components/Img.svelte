@@ -8,9 +8,18 @@
 		class?: string;
 		/** Load immediately (above the fold). */
 		eager?: boolean;
+		/** View Transition name, for morphing between pages. */
+		transitionName?: string;
 	}
 
-	let { image, alt, sizes = '200px', class: className = '', eager = false }: Props = $props();
+	let {
+		image,
+		alt,
+		sizes = '200px',
+		class: className = '',
+		eager = false,
+		transitionName
+	}: Props = $props();
 
 	// The image is absolutely positioned inside; the wrapper needs a position unless one is given.
 	const position = $derived(/\b(absolute|fixed|sticky)\b/.test(className) ? '' : 'relative');
@@ -39,6 +48,8 @@
 <div
 	class="{position} overflow-hidden bg-surface-2 {className}"
 	style:background-color={image?.color ?? undefined}
+	style:view-transition-name={transitionName}
+	data-hero-poster={transitionName ? '' : undefined}
 >
 	{#if image}
 		{#key image.url}

@@ -2,10 +2,12 @@
 	import { mediaType } from '$lib/media-types/registry';
 	import { formatEpisodeCode } from '$lib/media-types/types';
 	import type { LibraryItem } from '$lib/tracking/types';
+	import { markHeroPoster } from '$lib/transitions';
 	import Img from './Img.svelte';
 	import ProgressBar from './ProgressBar.svelte';
 
 	let { item, eager = false }: { item: LibraryItem; eager?: boolean } = $props();
+	let poster: HTMLDivElement | undefined = $state();
 
 	const subtitle = $derived.by(() => {
 		const p = item.progress;
@@ -23,8 +25,14 @@
 	});
 </script>
 
-<a href={item.href} class="group block focus-visible:outline-none" title={item.name}>
+<a
+	href={item.href}
+	class="group block focus-visible:outline-none"
+	title={item.name}
+	onclick={() => markHeroPoster(poster)}
+>
 	<div
+		bind:this={poster}
 		class="relative overflow-hidden rounded-xl shadow-md ring-1 ring-white/5 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl group-focus-visible:ring-2 group-focus-visible:ring-accent group-active:scale-[0.98]"
 	>
 		<Img
@@ -38,7 +46,7 @@
 			<div
 				class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6"
 			>
-				<ProgressBar percent={item.progress.percent} />
+				<ProgressBar percent={item.progress.percent} onImage />
 			</div>
 		{/if}
 	</div>

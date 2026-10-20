@@ -73,6 +73,22 @@ the types in `src/lib/catalog/types.ts`.
   every aired episode of an ended or canceled show watched → Completed; a Completed show with
   unwatched aired episodes → Watching; a watched movie → Completed.
 
+## Installable app (PWA)
+
+- `static/manifest.webmanifest` and the icons in `static/icons/` (regenerate them with
+  `npm run icons`) make the app installable. `app.html` adds the iOS meta tags.
+- `src/service-worker.ts` (SvelteKit's built-in service worker):
+  - precaches the app shell (JS, CSS, fonts, icons) per version;
+  - pages and their `__data.json` are network-first, falling back to the last copy cached on the
+    device (up to 40), then to `static/offline.html`;
+  - posters and backdrops are cache-first (up to 400);
+  - `/api/*` always goes to the network.
+- Signing out deletes the cached pages (`clearCachedPages` in `src/lib/pwa.svelte.ts`).
+- The theme (System, Dark or Light) is stored in a cookie, so the server renders the right one with
+  no flash. `hooks.server.ts` fills `%episodic.theme%` in `app.html`.
+- Page changes use the View Transitions API. The tapped poster morphs into the title page poster
+  (`src/lib/transitions.ts`). This is skipped when the user prefers reduced motion.
+
 ## Keeping metadata fresh
 
 The `refresh-titles` job runs every 20 minutes and refreshes up to 25 overdue titles per run

@@ -1,12 +1,27 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { ChevronRight, LogOut, Users } from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
 	import FormField from '$lib/components/FormField.svelte';
+	import InstallApp from '$lib/components/InstallApp.svelte';
+	import SegmentedControl from '$lib/components/SegmentedControl.svelte';
+	import { clearCachedPages } from '$lib/pwa.svelte';
+	import type { Theme } from '$lib/theme';
 	import SettingsSection from '$lib/components/SettingsSection.svelte';
 	import { formatDateTime } from '$lib/format';
 
 	let { data, form } = $props();
+
+	let theme = $derived<Theme>(data.theme);
+	async function setTheme(value: Theme) {
+		theme = value;
+		document.documentElement.dataset.theme = value;
+		const body = new FormData();
+		body.set('theme', value);
+		await fetch('?/theme', { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
+		await invalidateAll();
+	}
 
 	const checks = $derived([
 		{ label: 'Database', ok: data.database, detail: data.database ? 'Ready' : 'Unavailable' },
@@ -46,7 +61,7 @@
 					: ''}
 			</p>
 		</div>
-		<form method="POST" action="/logout">
+		<form method="POST" action="/logout" onsubmit={() => void clearCachedPages()}>
 			<Button type="submit" variant="secondary" size="sm"><LogOut class="size-4" /> Sign out</Button
 			>
 		</form>
@@ -90,6 +105,29 @@
 				<Button type="submit" size="sm">Save</Button>
 			</div>
 		</form>
+	</SettingsSection>
+
+	<SettingsSection title="Appearance">
+		<div class="flex flex-wrap items-center justify-between gap-4 p-5">
+			<span>
+				<span class="block font-medium">Theme</span>
+				<span class="block text-sm text-muted">System follows your device setting.</span>
+			</span>
+			<SegmentedControl
+				name="theme"
+				value={theme}
+				options={[
+					{ value: 'system', label: 'System' },
+					{ value: 'dark', label: 'Dark' },
+					{ value: 'light', label: 'Light' }
+				]}
+				onchange={setTheme}
+			/>
+		</div>
+	</SettingsSection>
+
+	<SettingsSection title="Install the app">
+		<InstallApp />
 	</SettingsSection>
 
 	<SettingsSection title="Preferences">

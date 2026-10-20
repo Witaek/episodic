@@ -61,7 +61,7 @@
 			{/if}
 			{#if item.progress}
 				<div class="mt-2 flex items-center gap-2">
-					<ProgressBar percent={item.progress.percent} class="flex-1" />
+					<ProgressBar percent={item.progress.percent} onImage class="flex-1" />
 					{#if remaining > 1}
 						<span class="text-[11px] whitespace-nowrap text-white/70">{remaining} left</span>
 					{/if}

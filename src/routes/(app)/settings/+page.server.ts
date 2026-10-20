@@ -12,6 +12,7 @@ import { jobStatus } from '$lib/server/jobs/scheduler';
 import { mappingsAge } from '$lib/server/providers/anime-mapping';
 import { providers } from '$lib/server/providers';
 import { refreshOverview } from '$lib/server/services/refresh';
+import { THEME_COOKIE, parseTheme } from '$lib/theme';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals }) => {
@@ -84,6 +85,17 @@ export const actions: Actions = {
 			.run();
 		deleteUserSessions(user.id, locals.sessionToken ?? undefined);
 		return { password: { success: true, error: null } };
+	},
+
+	theme: async ({ request, cookies }) => {
+		const theme = parseTheme(String((await request.formData()).get('theme')));
+		cookies.set(THEME_COOKIE, theme, {
+			path: '/',
+			httpOnly: false,
+			sameSite: 'lax',
+			maxAge: 60 * 60 * 24 * 365 * 5
+		});
+		return { theme: { success: true, error: null } };
 	},
 
 	signOutOthers: ({ locals }) => {

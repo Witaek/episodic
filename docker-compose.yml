@@ -67,7 +67,7 @@ x-casaos:
   category: Media
   index: /
   port_map: '8787'
-  icon: https://raw.githubusercontent.com/Witaek/episodic/main/static/icon.svg
+  icon: https://raw.githubusercontent.com/Witaek/episodic/main/static/icons/icon-512.png
   title:
     en_us: Episodic
   tagline:

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<meta name="theme-color" content="#0b0b12" />
+		<title>Offline · Episodic</title>
+		<style>
+			:root {
+				color-scheme: dark light;
+				--bg: #0b0b12;
+				--fg: #f4f4f8;
+				--muted: #9a9ab0;
+				--accent: #8b7cff;
+			}
+			@media (prefers-color-scheme: light) {
+				:root {
+					--bg: #f7f7fb;
+					--fg: #14141c;
+					--muted: #5f5f73;
+					--accent: #5b4ae6;
+				}
+			}
+			body {
+				margin: 0;
+				min-height: 100dvh;
+				display: grid;
+				place-items: center;
+				background: var(--bg);
+				color: var(--fg);
+				font-family:
+					ui-sans-serif,
+					system-ui,
+					-apple-system,
+					'Segoe UI',
+					Roboto,
+					sans-serif;
+				text-align: center;
+				padding: 1rem;
+			}
+			img {
+				width: 64px;
+				height: 64px;
+				border-radius: 16px;
+			}
+			p {
+				color: var(--muted);
+				max-width: 22rem;
+				margin: 0.5rem auto 1.5rem;
+			}
+			button {
+				background: var(--accent);
+				color: #fff;
+				border: 0;
+				border-radius: 999px;
+				padding: 0.7rem 1.4rem;
+				font: inherit;
+				font-weight: 600;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<img src="/icons/icon-192.png" alt="" />
+			<h1>You're offline</h1>
+			<p>
+				Episodic can't reach your server right now. Pages you opened recently still work. Check your
+				Wi-Fi or Tailscale connection.
+			</p>
+			<button type="button" onclick="location.reload()">Try again</button>
+		</main>
+	</body>
+</html>

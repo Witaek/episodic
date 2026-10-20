@@ -22,9 +22,11 @@
 		/** Watch count; undefined hides tracking controls (signed-out preview). */
 		plays?: number;
 		actions?: EpisodeActions;
+		/** Opens the episode details sheet. */
+		onopen?: () => void;
 	}
 
-	let { episode, showStill = true, plays, actions }: Props = $props();
+	let { episode, showStill = true, plays, actions, onopen }: Props = $props();
 
 	const aired = $derived(
 		episode.airAt ? new Date(episode.airAt) <= new Date() : isPast(episode.airDate)
@@ -44,28 +46,36 @@
 		? ''
 		: 'opacity-60'}"
 >
-	{#if showStill}
-		<div class="relative shrink-0">
-			<Img
-				image={episode.still}
-				alt=""
-				sizes="(min-width: 768px) 176px, 128px"
-				class="aspect-video w-32 rounded-lg md:w-44 {watched ? 'opacity-55' : ''}"
-			/>
-		</div>
-	{/if}
-	<div class="min-w-0 flex-1 self-start {showStill ? 'pt-0.5' : ''}">
-		<h3 class="text-[15px] leading-snug font-medium {watched ? 'text-fg/70' : ''}">
-			<span class="text-muted tabular-nums">{episode.number}.</span>
-			{episode.name ?? `Episode ${episode.number}`}
-		</h3>
-		<p class="mt-0.5 text-xs text-muted">
-			{when}{episode.runtime ? ` · ${formatRuntime(episode.runtime)}` : ''}
-		</p>
-		{#if episode.overview}
-			<p class="mt-1.5 line-clamp-2 text-sm text-muted">{episode.overview}</p>
+	<button
+		type="button"
+		class="flex min-w-0 flex-1 items-center gap-3 text-left md:gap-4"
+		onclick={onopen}
+		disabled={!onopen}
+		aria-label="Details for {code}"
+	>
+		{#if showStill}
+			<div class="relative shrink-0">
+				<Img
+					image={episode.still}
+					alt=""
+					sizes="(min-width: 768px) 176px, 128px"
+					class="aspect-video w-32 rounded-lg md:w-44 {watched ? 'opacity-55' : ''}"
+				/>
+			</div>
 		{/if}
-	</div>
+		<div class="min-w-0 flex-1 self-start {showStill ? 'pt-0.5' : ''}">
+			<h3 class="text-[15px] leading-snug font-medium {watched ? 'text-fg/70' : ''}">
+				<span class="text-muted tabular-nums">{episode.number}.</span>
+				{episode.name ?? `Episode ${episode.number}`}
+			</h3>
+			<p class="mt-0.5 text-xs text-muted">
+				{when}{episode.runtime ? ` · ${formatRuntime(episode.runtime)}` : ''}
+			</p>
+			{#if episode.overview}
+				<p class="mt-1.5 line-clamp-2 text-sm text-muted">{episode.overview}</p>
+			{/if}
+		</div>
+	</button>
 
 	{#if actions}
 		<div class="flex shrink-0 items-center gap-1">

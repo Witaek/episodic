@@ -2,6 +2,7 @@
 	import { Star } from '@lucide/svelte';
 	import type { SearchResult } from '$lib/catalog/types';
 	import { mediaType } from '$lib/media-types/registry';
+	import { markHeroPoster } from '$lib/transitions';
 	import Img from './Img.svelte';
 
 	interface Props {
@@ -11,10 +12,17 @@
 	}
 
 	let { item, sizes = '(min-width: 1024px) 180px, 33vw', eager = false }: Props = $props();
+	let poster: HTMLDivElement | undefined = $state();
 </script>
 
-<a href={item.href} class="group block focus-visible:outline-none" title={item.name}>
+<a
+	href={item.href}
+	class="group block focus-visible:outline-none"
+	title={item.name}
+	onclick={() => markHeroPoster(poster)}
+>
 	<div
+		bind:this={poster}
 		class="relative overflow-hidden rounded-xl shadow-md ring-1 ring-white/5 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-xl group-focus-visible:ring-2 group-focus-visible:ring-accent group-active:scale-[0.98]"
 	>
 		<Img image={item.poster} alt="" {sizes} {eager} class="aspect-[2/3]" />

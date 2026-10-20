@@ -64,3 +64,17 @@ test('a second user does not see the first user library', async ({ page, browser
 	await expect(viewer.getByText('No history yet')).toBeVisible();
 	await other.close();
 });
+
+test('export your data and make a backup', async ({ page }) => {
+	await signIn(page);
+	const exported = await (await page.request.get('/api/export')).json();
+	expect(exported.format).toBe('episodic-export');
+	expect(Array.isArray(exported.activity)).toBe(true);
+
+	await page.goto('/settings/backups');
+	await page.getByRole('button', { name: 'Back up now' }).click();
+	await expect(page.getByText(/Backup episodic-.*-manual\.db created\./)).toBeVisible();
+	const link = page.getByRole('link', { name: /Download episodic-/ }).first();
+	const response = await page.request.get((await link.getAttribute('href'))!);
+	expect(response.headers()['content-type']).toBe('application/vnd.sqlite3');
+});

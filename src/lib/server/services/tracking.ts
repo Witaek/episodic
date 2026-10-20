@@ -190,7 +190,7 @@ function hasActivity(userId: number, titleId: number): boolean {
 }
 
 /**
- * Automatic status rules:
+ * Automatic status rules (unless the user turned them off):
  * - watching something moves it to Watching (adding it to the library if needed),
  *   including from Watchlist, On hold and Dropped;
  * - every aired episode of an ended or canceled show watched → Completed;
@@ -206,6 +206,15 @@ export function applyAutoStatus(
 ): void {
 	const entry = getEntry(userId, title.id);
 	const active = hasActivity(userId, title.id);
+
+	// With automatic statuses off, only make sure something you watch is in your library.
+	if (prefs.autoStatus === false) {
+		if (!entry && active && trigger === 'watch') {
+			setStatus(userId, title.id, title.mediaType === 'movie' ? 'completed' : 'in_progress');
+		}
+		if (trigger === 'watch') touchEntry(userId, title.id, at);
+		return;
+	}
 
 	if (title.mediaType === 'movie') {
 		if (active && entry?.status !== 'completed') setStatus(userId, title.id, 'completed');

@@ -5,8 +5,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-20
+
+First release: search, library, one-tap tracking, Up Next, history, Upcoming, airing updates,
+separate accounts, installable app, backups and export.
+
 ### Added
 
+- Nightly database backups at 03:30, kept for `BACKUP_RETENTION_DAYS` (default 14), plus
+  "Back up now", download and delete in **Settings → Backups** (admins).
+- JSON export of your own library and history, and a restore that merges, runs in the background
+  and shows progress.
+- Preference to turn automatic status changes off.
+- Guides: backup and restore, updating, troubleshooting.
 - Installable app: web manifest, app icons (including maskable and Apple touch icons), iOS
   full-screen mode, and an "Install the app" section in Settings.
 - Offline support: the app shell is cached, recently opened pages open offline, posters are cached,

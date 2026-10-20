@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import { ChevronRight, LogOut, Users } from '@lucide/svelte';
+	import { ChevronRight, DatabaseBackup, LogOut, Users } from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
+	import DataSection from '$lib/components/DataSection.svelte';
 	import FormField from '$lib/components/FormField.svelte';
 	import InstallApp from '$lib/components/InstallApp.svelte';
 	import SegmentedControl from '$lib/components/SegmentedControl.svelte';
@@ -81,6 +82,21 @@
 			</span>
 			<ChevronRight class="size-5 text-muted" />
 		</a>
+		<a
+			href="/settings/backups"
+			class="flex items-center gap-4 rounded-2xl border border-border bg-surface px-5 py-4 transition hover:border-accent/50"
+		>
+			<span class="grid size-10 place-items-center rounded-xl bg-success/15 text-success"
+				><DatabaseBackup class="size-5" /></span
+			>
+			<span class="flex-1">
+				<span class="block font-medium">Backups</span>
+				<span class="block text-sm text-muted"
+					>Nightly database copies, download or back up now</span
+				>
+			</span>
+			<ChevronRight class="size-5 text-muted" />
+		</a>
 	{/if}
 
 	<SettingsSection title="Profile">
@@ -154,7 +170,27 @@
 					class="mt-1 size-5 accent-[var(--accent)]"
 				/>
 			</label>
+			<label class="mt-4 flex items-start justify-between gap-4 border-t border-border pt-4">
+				<span>
+					<span class="block font-medium">Automatic statuses</span>
+					<span class="block text-sm text-muted">
+						Move titles to Watching when you start, to Completed when you finish an ended show, and
+						back to Watching when new episodes air.
+					</span>
+				</span>
+				<input
+					type="checkbox"
+					name="autoStatus"
+					checked={data.user.prefs.autoStatus ?? true}
+					onchange={(event) => event.currentTarget.form?.requestSubmit()}
+					class="mt-1 size-5 accent-[var(--accent)]"
+				/>
+			</label>
 		</form>
+	</SettingsSection>
+
+	<SettingsSection title="Your data">
+		<DataSection />
 	</SettingsSection>
 
 	<SettingsSection title="Password">

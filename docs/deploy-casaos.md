@@ -80,28 +80,19 @@ Follow [https-tailscale.md](https-tailscale.md) to get an address like
 
 ## Updating
 
-Episodic publishes a new `latest` image whenever the code changes. To update:
-
-1. Open the Episodic app's **Settings** in CasaOS.
-2. Click **Save** without changing anything (on some CasaOS versions the button is **Rebuild** or
-   **Update**). CasaOS pulls the newest image and recreates the container.
-
-Database changes are applied automatically when the app starts, and your data is kept.
-
-If you'd rather update only when you choose to, replace the `latest` tag with a version such as
-`0.1.0`. Version tags will be listed on the
-[package page](https://github.com/Witaek/episodic/pkgs/container/episodic).
+Download the new image from a terminal (`sudo docker pull ghcr.io/witaek/episodic:latest`), then
+open the app's ⋮ → **Settings** and click **Save**. Your data is kept, and the database is upgraded
+automatically. Details, version pinning and rolling back are covered in [updating.md](updating.md).
 
 ## Where your data lives
 
-Everything Episodic stores is in **`/DATA/AppData/episodic`** on the CasaOS host:
-
-- `episodic.db`: the database, with its `-wal` and `-shm` companion files while the app is running.
-- `backups/`: automatic daily backups, from phase 5.
-
-To back up manually, stop the app in CasaOS and copy that folder.
+Everything is in **`/DATA/AppData/episodic`**: the database (`episodic.db`) and nightly backups
+(`backups/`). Admins can make and download backups in **Settings → Backups**, and everyone can
+export their own data in **Settings → Your data**. See [backup-restore.md](backup-restore.md).
 
 ## Troubleshooting
+
+The most common problems are below. For the full list, see [troubleshooting.md](troubleshooting.md).
 
 | Problem                                          | Fix                                                                                                                                        |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |

@@ -4,6 +4,7 @@ import { purgeExpiredCache } from '../cache';
 import { getDb } from '../db/client';
 import { jobRuns } from '../db/schema';
 import { mappingsAge, refreshAnimeMappings } from '../providers/anime-mapping';
+import { scheduledBackup } from '../services/backup';
 import { refreshDueTitles } from '../services/refresh';
 import { registerJobs, type JobDefinition } from './scheduler';
 
@@ -27,6 +28,11 @@ export const jobs: JobDefinition[] = [
 			const count = await refreshAnimeMappings();
 			return `stored ${count} anime mappings`;
 		}
+	},
+	{
+		name: 'backup',
+		schedule: '30 3 * * *', // daily 03:30
+		run: scheduledBackup
 	},
 	{
 		name: 'cleanup',

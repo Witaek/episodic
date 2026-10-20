@@ -32,6 +32,12 @@ export function runMigrations(): void {
 	migrate(getDb(), { migrationsFolder: resolve(process.cwd(), 'drizzle') });
 }
 
+/** The underlying better-sqlite3 handle, for online backups. */
+export function getSqlite(): Database.Database {
+	getDb();
+	return sqlite!;
+}
+
 export function isDatabaseHealthy(): boolean {
 	try {
 		getDb();

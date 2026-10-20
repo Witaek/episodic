@@ -59,7 +59,11 @@ export const actions: Actions = {
 
 	preferences: async ({ locals, request }) => {
 		const form = await request.formData();
-		const prefs = { ...locals.user!.prefs, includeSpecials: form.get('includeSpecials') === 'on' };
+		const prefs = {
+			...locals.user!.prefs,
+			includeSpecials: form.get('includeSpecials') === 'on',
+			autoStatus: form.get('autoStatus') === 'on'
+		};
 		getDb().update(users).set({ prefs }).where(eq(users.id, locals.user!.id)).run();
 		return { preferences: { success: true, error: null } };
 	},

@@ -11,12 +11,10 @@
 
 ---
 
-> **Status: early development (phase 4 of 5).** Everything for day-to-day tracking works,
-> including the installable app. Backups and export/restore are next. See the [roadmap](#roadmap).
+> **Status: v1.0.** Everything in the feature list below works. See the [roadmap](#roadmap) for
+> what's next.
 
 ## Features
-
-Planned for v1.0:
 
 - **One search for everything**: TV shows, anime and movies, with posters and backdrops.
 - **Library**: Watchlist, Watching, Completed, On hold, Dropped.
@@ -26,7 +24,8 @@ Planned for v1.0:
 - **History**: a timeline of everything you watched and when.
 - **Separate accounts** for everyone in your household.
 - **Installable app (PWA)** on iPhone and Android, with a native feel.
-- **Your data stays yours**: one SQLite file, automatic daily backups, JSON export.
+- **Your data stays yours**: one SQLite file, nightly backups, and JSON export and restore for each
+  person.
 
 Later: calendar and iCal feed, notifications, stats, where-to-watch, Jellyfin/Plex auto-tracking,
 and books and manga.
@@ -68,7 +67,7 @@ Open `http://<your-server>:8787`.
 - [x] **Phase 2**: accounts, library, one-tap tracking, Up Next
 - [x] **Phase 3**: history, airing status, Upcoming, background refresh
 - [x] **Phase 4**: installable PWA and UI polish
-- [ ] **Phase 5**: backups, export and restore, settings (**v1.0**)
+- [x] **Phase 5**: backups, export and restore, settings (**v1.0**)
 - [ ] Later: calendar, notifications, stats, integrations, books and manga
 
 ## Credits

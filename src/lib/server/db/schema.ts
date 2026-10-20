@@ -63,6 +63,8 @@ export const jobRuns = sqliteTable(
 export interface UserPrefs {
 	/** Count specials (season 0) in progress and Up Next. */
 	includeSpecials?: boolean;
+	/** Move titles between statuses automatically (default on). */
+	autoStatus?: boolean;
 }
 
 export const users = sqliteTable('users', {
@@ -231,3 +233,22 @@ export const activityEvents = sqliteTable(
 		index('activity_unit_idx').on(t.unitId)
 	]
 );
+
+/** Restores from a JSON export, processed in the background. */
+export const importJobs = sqliteTable('import_jobs', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	userId: integer('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	status: text('status', { enum: ['queued', 'running', 'done', 'error'] }).notNull(),
+	totalTitles: integer('total_titles').notNull().default(0),
+	doneTitles: integer('done_titles').notNull().default(0),
+	addedEntries: integer('added_entries').notNull().default(0),
+	addedEvents: integer('added_events').notNull().default(0),
+	skipped: text('skipped', { mode: 'json' }).$type<string[]>().notNull().default([]),
+	message: text('message'),
+	createdAt: timestamp('created_at')
+		.notNull()
+		.$defaultFn(() => new Date()),
+	finishedAt: timestamp('finished_at')
+});

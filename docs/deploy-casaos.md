@@ -48,14 +48,16 @@ Click **Install**. The first start takes a little longer while CasaOS downloads 
 
 Click the Episodic icon on the dashboard, or open `http://<casaos-ip>:8787`.
 
-The start page checks three things:
+You land on the home page with trending shows, movies and anime. To check that everything is set
+up, open **Settings**. Under _System status_:
 
-- **Server**: always green once the page loads.
-- **Database**: green when `/data` is writable.
-- **TMDB token**: green when your token is set.
+- **Database** is green when `/data` is writable.
+- **TMDB** is green when your token is set.
+- **Anime id mapping** turns green a few seconds after the first start, once the mapping has been
+  downloaded.
 
-> **Phase 0 note:** at this stage the page only shows these checks. Sign-in, search and tracking
-> arrive in the next phases. You'll update the app the same way, as described below.
+> **Early version:** search and title pages work. Sign-in, the library and tracking arrive in the
+> next phases. You'll update the app as described in [Updating](#updating).
 
 ## 4. Access from your phone with HTTPS (recommended)
 

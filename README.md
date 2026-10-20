@@ -11,8 +11,8 @@
 
 ---
 
-> **Status: early development (phase 0 of 5).** The server, database and Docker image work.
-> Search, tracking and the rest of the UI arrive in the next phases. See the [roadmap](#roadmap).
+> **Status: early development (phase 1 of 5).** Search and title pages for TV shows, anime and
+> movies work. Accounts, tracking and the rest arrive in the next phases. See the [roadmap](#roadmap).
 
 ## Features
 
@@ -64,7 +64,7 @@ Open `http://<your-server>:8787`.
 ## Roadmap
 
 - [x] **Phase 0**: skeleton, database, Docker image (amd64 and arm64), docs
-- [ ] **Phase 1**: catalog search (TMDB, AniList, TVmaze) and title pages
+- [x] **Phase 1**: catalog search (TMDB, AniList, TVmaze) and title pages
 - [ ] **Phase 2**: accounts, library, one-tap tracking, Up Next
 - [ ] **Phase 3**: history, airing status, Upcoming, background refresh
 - [ ] **Phase 4**: installable PWA and UI polish

@@ -27,8 +27,11 @@ and it's free for personal use.
    - **CasaOS:** in the app's settings form.
    - **Docker Compose:** in your `.env` file.
 
-To check it worked, open `http://<your-server>:8787/api/health`. It should show
-`"tmdbConfigured": true`.
+To check it worked, open **Settings** in Episodic: **TMDB** should be green. Then search for any TV
+show. (`http://<your-server>:8787/api/health` also shows `"tmdbConfigured": true`.)
+
+**Without a token**, Episodic still works for anime (through AniList), but TV show and movie search
+is disabled.
 
 > Keep the token private. It's tied to your TMDB account. If it leaks, you can regenerate it on the
 > same API page.

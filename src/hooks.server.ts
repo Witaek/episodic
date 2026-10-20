@@ -1,6 +1,8 @@
 import type { Handle, ServerInit } from '@sveltejs/kit';
 import { config } from '$lib/server/config';
 import { closeDb, runMigrations } from '$lib/server/db/client';
+import { startJobs } from '$lib/server/jobs';
+import { stopJobs } from '$lib/server/jobs/scheduler';
 import { isRequestOriginAllowed } from '$lib/server/security';
 
 export const init: ServerInit = async () => {
@@ -12,8 +14,13 @@ export const init: ServerInit = async () => {
 	}
 	if (APP_URL) console.info(`[episodic] public URL: ${APP_URL}`);
 
-	process.once('SIGTERM', closeDb);
-	process.once('SIGINT', closeDb);
+	startJobs();
+
+	// adapter-node emits this after it stops accepting requests (SIGTERM/SIGINT).
+	process.once('sveltekit:shutdown', () => {
+		stopJobs();
+		closeDb();
+	});
 };
 
 export const handle: Handle = async ({ event, resolve }) => {

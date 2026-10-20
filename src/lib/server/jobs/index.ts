@@ -1,0 +1,37 @@
+import { lt } from 'drizzle-orm';
+import { purgeExpiredCache } from '../cache';
+import { getDb } from '../db/client';
+import { jobRuns } from '../db/schema';
+import { mappingsAge, refreshAnimeMappings } from '../providers/anime-mapping';
+import { registerJobs, type JobDefinition } from './scheduler';
+
+const DAY = 24 * 60 * 60 * 1000;
+
+export const jobs: JobDefinition[] = [
+	{
+		name: 'anime-mappings',
+		schedule: '30 4 * * 1', // Mondays 04:30
+		runOnStart: true,
+		async run() {
+			if (mappingsAge() < 6 * DAY) return 'mappings are fresh';
+			const count = await refreshAnimeMappings();
+			return `stored ${count} anime mappings`;
+		}
+	},
+	{
+		name: 'cleanup',
+		schedule: '15 4 * * *', // daily 04:15
+		async run() {
+			const cache = purgeExpiredCache();
+			const runs = getDb()
+				.delete(jobRuns)
+				.where(lt(jobRuns.startedAt, new Date(Date.now() - 30 * DAY)))
+				.run().changes;
+			return `removed ${cache} cache entries and ${runs} old job runs`;
+		}
+	}
+];
+
+export function startJobs(): void {
+	registerJobs(jobs);
+}

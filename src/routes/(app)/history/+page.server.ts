@@ -1,7 +1,7 @@
 import { listHistory, type HistoryType } from '$lib/server/services/history';
 import type { PageServerLoad } from './$types';
 
-const TYPES: HistoryType[] = ['all', 'tv', 'anime', 'movie'];
+const TYPES: HistoryType[] = ['all', 'tv', 'anime', 'movie', 'book'];
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	const typeParam = url.searchParams.get('type') as HistoryType | null;

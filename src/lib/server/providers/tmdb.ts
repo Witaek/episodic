@@ -348,7 +348,7 @@ function get<T>(path: string, params: Record<string, string | number | boolean>)
 	});
 }
 
-const SEARCH_PATHS: Record<Exclude<SearchFilter, 'anime'>, string> = {
+const SEARCH_PATHS: Record<Exclude<SearchFilter, 'anime' | 'book'>, string> = {
 	all: '/search/multi',
 	tv: '/search/tv',
 	movie: '/search/movie'
@@ -364,7 +364,7 @@ export const tmdb = {
 	isConfigured: () => Boolean(config().TMDB_ACCESS_TOKEN),
 
 	async search(query: string, filter: SearchFilter, locale: LocaleOptions) {
-		const path = SEARCH_PATHS[filter === 'anime' ? 'tv' : filter];
+		const path = SEARCH_PATHS[filter === 'anime' || filter === 'book' ? 'tv' : filter];
 		const data = await get<{ results: RawListItem[] }>(path, {
 			query,
 			language: locale.language,

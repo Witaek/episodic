@@ -10,6 +10,13 @@
 	let poster: HTMLDivElement | undefined = $state();
 
 	const subtitle = $derived.by(() => {
+		if (item.mediaType === 'book') {
+			const r = item.reading;
+			if (item.status === 'in_progress' && r?.page) {
+				return r.pages ? `p. ${r.page} of ${r.pages}` : `p. ${r.page}`;
+			}
+			return [item.year, 'Book'].filter(Boolean).join(' · ');
+		}
 		const p = item.progress;
 		if (item.status === 'in_progress' && p) {
 			if (p.nextUp) {
@@ -42,7 +49,16 @@
 			{eager}
 			class="aspect-[2/3]"
 		/>
-		{#if item.progress && item.progress.watched > 0 && item.status !== 'completed'}
+		{#if item.mediaType === 'book' && item.reading?.page && item.reading.pages && item.status !== 'completed'}
+			<div
+				class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6"
+			>
+				<ProgressBar
+					percent={Math.min(100, (item.reading.page / item.reading.pages) * 100)}
+					onImage
+				/>
+			</div>
+		{:else if item.progress && item.progress.watched > 0 && item.status !== 'completed'}
 			<div
 				class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6"
 			>

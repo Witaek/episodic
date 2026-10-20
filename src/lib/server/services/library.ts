@@ -6,6 +6,7 @@ import {
 	MOVIE_KEY,
 	episodeKey,
 	type LibraryItem,
+	type ReadingProgress,
 	type TitleUserState
 } from '$lib/tracking/types';
 import type { UserPrefs } from '../db/schema';
@@ -15,6 +16,19 @@ import { computeProgress, progressForTitles, watchCounts } from './progress';
 import { titleEpisodes, type TitleRow } from './titles';
 
 export type LibraryEntry = typeof libraryEntries.$inferSelect;
+
+/** Movies and books are tracked as a whole (no episodes). */
+export function isWholeTitle(title: Pick<TitleRow, 'mediaType'>): boolean {
+	return title.mediaType === 'movie' || title.mediaType === 'book';
+}
+
+export function readingOf(
+	entry: LibraryEntry | undefined,
+	title: Pick<TitleRow, 'pages'>
+): ReadingProgress {
+	const page = entry?.progress?.page;
+	return { page: typeof page === 'number' ? page : null, pages: title.pages ?? null };
+}
 
 export function getEntry(userId: number, titleId: number): LibraryEntry | undefined {
 	return getDb()
@@ -62,7 +76,7 @@ export function getUserTitleState(
 	const entry = getEntry(userId, title.id);
 	const watched: Record<string, number> = {};
 
-	if (title.mediaType === 'movie') {
+	if (isWholeTitle(title)) {
 		const plays =
 			getDb()
 				.select({ n: sql<number>`count(*)` })
@@ -75,6 +89,7 @@ export function getUserTitleState(
 			status: entry?.status ?? null,
 			watched,
 			progress: null,
+			reading: title.mediaType === 'book' ? readingOf(entry, title) : null,
 			lastActivityAt: entry?.lastActivityAt?.toISOString() ?? null
 		};
 	}
@@ -92,6 +107,7 @@ export function getUserTitleState(
 		progress: computeProgress(list, new Set(counts.keys()), {
 			includeSpecials: prefs.includeSpecials
 		}),
+		reading: null,
 		lastActivityAt: entry?.lastActivityAt?.toISOString() ?? null
 	};
 }
@@ -126,7 +142,7 @@ export function listLibrary(
 		.orderBy(...order)
 		.all();
 
-	const showIds = rows.filter((r) => r.title.mediaType !== 'movie').map((r) => r.title.id);
+	const showIds = rows.filter((r) => !isWholeTitle(r.title)).map((r) => r.title.id);
 	const progress = progressForTitles(userId, showIds, { includeSpecials: prefs.includeSpecials });
 
 	return rows.map(({ entry, title }) => ({
@@ -144,7 +160,8 @@ export function listLibrary(
 		status: entry.status,
 		addedAt: entry.addedAt.toISOString(),
 		lastActivityAt: entry.lastActivityAt?.toISOString() ?? null,
-		progress: progress.get(title.id) ?? null
+		progress: progress.get(title.id) ?? null,
+		reading: title.mediaType === 'book' ? readingOf(entry, title) : null
 	}));
 }
 

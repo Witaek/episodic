@@ -180,7 +180,14 @@ export const show: MediaTypeDefinition = {
 
 The search tabs come from the registry, and so will library filters and labels.
 
-## Adding a media type (example: books)
+## Adding a media type
+
+Books were added exactly this way: `media-types/book/`, `providers/openlibrary.ts`, a `pages`
+column on `titles`, and page progress stored in `library_entries.progress`. Movies and books share
+the "tracked as a whole" path (`isWholeTitle` in `services/library.ts`). Follow the same steps for
+the next type (manga would use AniList and the `chapters` progress model):
+
+### Steps
 
 1. **Types:** add `'book'` to `MediaTypeId` (and a `TitleKind` and `SearchFilter` value if it gets
    its own route and tab) in `src/lib/catalog/types.ts`.

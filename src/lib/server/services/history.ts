@@ -6,7 +6,7 @@ import { activityEvents, episodes, titles } from '../db/schema';
 
 export type { HistoryItem };
 
-export type HistoryType = 'all' | 'tv' | 'anime' | 'movie';
+export type HistoryType = 'all' | 'tv' | 'anime' | 'movie' | 'book';
 
 /** Cursor-paginated watch history, newest first. The cursor is "<epoch ms>:<event id>". */
 export function listHistory(
@@ -31,6 +31,7 @@ export function listHistory(
 		}
 	}
 	if (type === 'movie') conditions.push(eq(titles.mediaType, 'movie'));
+	if (type === 'book') conditions.push(eq(titles.mediaType, 'book'));
 	if (type === 'tv') conditions.push(eq(titles.mediaType, 'show'));
 	if (type === 'anime') conditions.push(eq(titles.isAnime, true));
 

@@ -7,6 +7,7 @@ export const show: MediaTypeDefinition = {
 	searchFilter: 'tv',
 	progressModel: 'episodic',
 	statusLabels: VIDEO_STATUS_LABELS,
+	addLabel: 'Add to Watchlist',
 	consumedLabel: 'Watched',
 	providers: { search: ['tmdb'], details: ['tmdb', 'tvmaze'] },
 	formatUnit: formatEpisodeCode

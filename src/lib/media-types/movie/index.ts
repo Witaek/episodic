@@ -7,6 +7,7 @@ export const movie: MediaTypeDefinition = {
 	searchFilter: 'movie',
 	progressModel: 'single',
 	statusLabels: VIDEO_STATUS_LABELS,
+	addLabel: 'Add to Watchlist',
 	consumedLabel: 'Watched',
 	providers: { search: ['tmdb'], details: ['tmdb'] },
 	formatUnit: () => 'Movie'

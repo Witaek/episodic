@@ -13,7 +13,7 @@ export function requireUser(locals: App.Locals): SessionUser {
 	return locals.user;
 }
 
-const KINDS = ['movie', 'tv', 'anime'] as const;
+const KINDS = ['movie', 'tv', 'anime', 'book'] as const;
 
 export function parseTitleParams(params: { kind: string; id: string }): {
 	kind: TitleKind;
@@ -67,5 +67,6 @@ export const watchTargetSchema = z.discriminatedUnion('type', [
 		number: z.number().int().min(0)
 	}),
 	z.object({ type: z.literal('all') }),
-	z.object({ type: z.literal('movie') })
+	z.object({ type: z.literal('movie') }),
+	z.object({ type: z.literal('book') })
 ]);

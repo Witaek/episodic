@@ -11,8 +11,8 @@ import { ensureTitle } from './titles';
  */
 
 const titleRef = z.object({
-	provider: z.enum(['tmdb', 'anilist']),
-	kind: z.enum(['movie', 'tv', 'anime']),
+	provider: z.enum(['tmdb', 'anilist', 'openlibrary']),
+	kind: z.enum(['movie', 'tv', 'anime', 'book']),
 	externalId: z.string().regex(/^\d+$/),
 	name: z.string()
 });
@@ -56,7 +56,7 @@ export function exportUserData(userId: number): EpisodicExport {
 	const db = getDb();
 	const user = db.select().from(users).where(eq(users.id, userId)).get()!;
 	const ref = (t: typeof titles.$inferSelect) => ({
-		provider: t.provider as 'tmdb' | 'anilist',
+		provider: t.provider as 'tmdb' | 'anilist' | 'openlibrary',
 		kind: t.kind,
 		externalId: t.externalId,
 		name: t.name

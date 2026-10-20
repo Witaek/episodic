@@ -158,6 +158,14 @@
 		</section>
 	{/if}
 
+	{#if data.reading.length}
+		<MediaRow
+			title="Continue reading"
+			items={data.reading.map(toResult)}
+			href="/library?type=book"
+		/>
+	{/if}
+
 	{#if data.watchlist.length}
 		<MediaRow
 			title="Your watchlist"

@@ -1,8 +1,8 @@
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { WatchTarget } from '$lib/tracking/types';
 import { getDb } from '../db/client';
-import { activityEvents, episodes, type UserPrefs } from '../db/schema';
-import { getEntry, setStatus, touchEntry } from './library';
+import { activityEvents, episodes, libraryEntries, type UserPrefs } from '../db/schema';
+import { getEntry, isWholeTitle, setStatus, touchEntry } from './library';
 import { compareEpisodes, computeProgress, isAired, watchCounts } from './progress';
 import { titleEpisodes, type TitleRow } from './titles';
 
@@ -45,7 +45,8 @@ export function selectEpisodes(
 		case 'all':
 			return sorted.filter((e) => isAired(e, now) && (includeSpecials || e.seasonNumber !== 0));
 		case 'movie':
-			throw new TrackingError('Not a movie');
+		case 'book':
+			throw new TrackingError('Not a movie or book');
 	}
 }
 
@@ -66,8 +67,10 @@ export function watch(
 ): { eventIds: number[]; earlierUnwatched: number } {
 	const db = getDb();
 
-	if (title.mediaType === 'movie') {
-		if (target.type !== 'movie') throw new TrackingError('Movies are marked as a whole');
+	if (isWholeTitle(title)) {
+		if (target.type !== 'movie' && target.type !== 'book') {
+			throw new TrackingError('Movies and books are marked as a whole');
+		}
 		const plays = db
 			.select({ n: sql<number>`count(*)` })
 			.from(activityEvents)
@@ -80,7 +83,7 @@ export function watch(
 				userId,
 				titleId: title.id,
 				unitId: null,
-				action: 'watched',
+				action: title.mediaType === 'book' ? 'read' : 'watched',
 				occurredAt: watchedAt,
 				source,
 				isRepeat: plays > 0
@@ -132,7 +135,7 @@ export function watch(
 export function unwatch(userId: number, title: TitleRow, target: WatchTarget, prefs: UserPrefs) {
 	const db = getDb();
 	let unitIds: (number | null)[];
-	if (title.mediaType === 'movie') {
+	if (isWholeTitle(title)) {
 		unitIds = [null];
 	} else {
 		const all = titleEpisodes(title.id);
@@ -210,13 +213,13 @@ export function applyAutoStatus(
 	// With automatic statuses off, only make sure something you watch is in your library.
 	if (prefs.autoStatus === false) {
 		if (!entry && active && trigger === 'watch') {
-			setStatus(userId, title.id, title.mediaType === 'movie' ? 'completed' : 'in_progress');
+			setStatus(userId, title.id, isWholeTitle(title) ? 'completed' : 'in_progress');
 		}
 		if (trigger === 'watch') touchEntry(userId, title.id, at);
 		return;
 	}
 
-	if (title.mediaType === 'movie') {
+	if (isWholeTitle(title)) {
 		if (active && entry?.status !== 'completed') setStatus(userId, title.id, 'completed');
 		else if (!active && entry?.status === 'completed') setStatus(userId, title.id, 'planned');
 		if (trigger === 'watch') touchEntry(userId, title.id, at);
@@ -241,4 +244,34 @@ export function applyAutoStatus(
 
 	if (status && status !== entry?.status) setStatus(userId, title.id, status);
 	if (trigger === 'watch') touchEntry(userId, title.id, at);
+}
+
+/**
+ * Saves the page a reader is on. Starting a book moves it to Reading; reaching the last page
+ * marks it as read (unless automatic statuses are off). Returns whether the book was finished.
+ */
+export function setReadingProgress(
+	userId: number,
+	title: TitleRow,
+	page: number,
+	prefs: UserPrefs
+): { finished: boolean } {
+	if (title.mediaType !== 'book') throw new TrackingError('Only books have page progress');
+	const clamped = Math.max(0, Math.min(Math.round(page), title.pages ?? Number.MAX_SAFE_INTEGER));
+	const entry = getEntry(userId, title.id);
+	const auto = prefs.autoStatus !== false;
+
+	if (!entry) setStatus(userId, title.id, clamped > 0 ? 'in_progress' : 'planned');
+	else if (auto && clamped > 0 && entry.status === 'planned')
+		setStatus(userId, title.id, 'in_progress');
+
+	getDb()
+		.update(libraryEntries)
+		.set({ progress: { page: clamped }, lastActivityAt: new Date(), updatedAt: new Date() })
+		.where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.titleId, title.id)))
+		.run();
+
+	const finished = auto && !!title.pages && clamped >= title.pages && entry?.status !== 'completed';
+	if (finished) watch(userId, title, { type: 'book' }, prefs, { rewatch: true });
+	return { finished };
 }

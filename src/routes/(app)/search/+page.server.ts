@@ -4,7 +4,7 @@ import { tmdb } from '$lib/server/providers';
 import { search, trendingRows } from '$lib/server/services/catalog';
 import type { PageServerLoad } from './$types';
 
-const FILTERS: SearchFilter[] = ['all', 'tv', 'anime', 'movie'];
+const FILTERS: SearchFilter[] = ['all', 'tv', 'anime', 'movie', 'book'];
 
 export const load: PageServerLoad = async ({ url }) => {
 	const query = (url.searchParams.get('q') ?? '').slice(0, 200);

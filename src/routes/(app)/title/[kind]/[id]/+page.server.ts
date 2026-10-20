@@ -12,7 +12,7 @@ import {
 } from '$lib/server/services/catalog';
 import type { PageServerLoad } from './$types';
 
-const KINDS: TitleKind[] = ['movie', 'tv', 'anime'];
+const KINDS: TitleKind[] = ['movie', 'tv', 'anime', 'book'];
 
 export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const kind = params.kind as TitleKind;

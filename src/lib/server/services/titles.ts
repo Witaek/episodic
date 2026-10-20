@@ -12,7 +12,7 @@ import { getSeason, getTitle } from './catalog';
 export type TitleRow = typeof titles.$inferSelect;
 
 export function providerFor(kind: TitleKind): ProviderId {
-	return kind === 'anime' ? 'anilist' : 'tmdb';
+	return kind === 'anime' ? 'anilist' : kind === 'book' ? 'openlibrary' : 'tmdb';
 }
 
 export function findTitle(kind: TitleKind, externalId: string): TitleRow | undefined {
@@ -60,7 +60,10 @@ export async function syncTitle(
 	}
 	const details = lookup.title;
 
-	let wanted = details.mediaType === 'movie' ? [] : details.seasons.map((s) => s.number);
+	let wanted =
+		details.mediaType === 'movie' || details.mediaType === 'book'
+			? []
+			: details.seasons.map((s) => s.number);
 	if (which === 'recent' && wanted.length > 0) {
 		const existing = findTitle(kind, externalId);
 		const stored = new Set(
@@ -108,6 +111,7 @@ export function storeTitle(
 		startDate: details.startDate,
 		endDate: details.endDate,
 		runtime: details.runtime,
+		pages: details.pages ?? null,
 		rating: details.rating,
 		refreshedAt: new Date(),
 		...(full ? { fullRefreshedAt: new Date() } : {})

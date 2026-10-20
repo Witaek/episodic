@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { Library } from '@lucide/svelte';
 	import LibraryCard from '$lib/components/LibraryCard.svelte';
+	import { READING_STATUS_LABELS } from '$lib/media-types/book';
 	import { LIBRARY_STATUSES, VIDEO_STATUS_LABELS } from '$lib/media-types/types';
 
 	let { data } = $props();
@@ -10,7 +11,8 @@
 		{ id: 'all', label: 'All' },
 		{ id: 'tv', label: 'TV shows' },
 		{ id: 'anime', label: 'Anime' },
-		{ id: 'movie', label: 'Movies' }
+		{ id: 'movie', label: 'Movies' },
+		{ id: 'book', label: 'Books' }
 	];
 	const sorts = [
 		{ id: 'activity', label: 'Recently watched' },
@@ -29,6 +31,9 @@
 		if (params.get('sort') === 'activity') params.delete('sort');
 		return `/library?${params}`;
 	}
+
+	// Books use reading words: Plan to read, Reading, Read.
+	const labels = $derived(data.type === 'book' ? READING_STATUS_LABELS : VIDEO_STATUS_LABELS);
 
 	const empty: Record<string, string> = {
 		in_progress: 'Shows you start watching appear here.',
@@ -74,7 +79,7 @@
 					? 'bg-fg text-bg'
 					: 'bg-surface-2 text-muted hover:text-fg'}"
 			>
-				{VIDEO_STATUS_LABELS[status]}
+				{labels[status]}
 				<span class="text-xs tabular-nums {active ? 'text-bg/60' : 'text-muted/70'}"
 					>{data.counts[status]}</span
 				>

@@ -27,6 +27,8 @@ export interface MediaTypeDefinition {
 	searchFilter: SearchFilter;
 	progressModel: ProgressModel;
 	statusLabels: Record<LibraryStatus, string>;
+	/** The main "add" button, e.g. "Add to Watchlist" or "Want to read". */
+	addLabel: string;
 	/** "Watched" / "Read": used for history and buttons. */
 	consumedLabel: string;
 	/** Providers used for search and details, in priority order. */

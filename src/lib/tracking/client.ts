@@ -61,3 +61,9 @@ export function undoEvents(eventIds: number[]) {
 export function haptic(pattern: number | number[] = 12) {
 	if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate?.(pattern);
 }
+
+export function setReadingPage(ref: TitleRefLike, page: number) {
+	return call<{ finished: boolean; state: TitleUserState }>(`${base(ref)}/progress`, 'PUT', {
+		page
+	});
+}

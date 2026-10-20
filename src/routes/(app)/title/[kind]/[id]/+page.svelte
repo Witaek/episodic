@@ -25,6 +25,7 @@
 	import { formatDate, formatDateTime, formatRuntime, year } from '$lib/format';
 	import LibraryStatusMenu from '$lib/components/LibraryStatusMenu.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import ReadingProgressControl from '$lib/components/ReadingProgressControl.svelte';
 	import WatchDateDialog from '$lib/components/WatchDateDialog.svelte';
 	import { mediaType } from '$lib/media-types/registry';
 	import { formatEpisodeCode } from '$lib/media-types/types';
@@ -59,6 +60,29 @@
 			: null
 	);
 	const progress = $derived(tracker?.state.progress ?? null);
+
+	// Movies and books are tracked as a whole: one button instead of episodes.
+	const whole = $derived(
+		title?.mediaType === 'book'
+			? {
+					target: { type: 'book' } as const,
+					markLabel: 'Mark as read',
+					doneLabel: 'Read',
+					undoLabel: 'Mark as unread',
+					againLabel: 'Read again',
+					dateLabel: 'Finished on a date…'
+				}
+			: title?.mediaType === 'movie'
+				? {
+						target: { type: 'movie' } as const,
+						markLabel: 'Mark watched',
+						doneLabel: 'Watched',
+						undoLabel: 'Mark unwatched',
+						againLabel: 'Watch again',
+						dateLabel: 'Watched on a date…'
+					}
+				: null
+	);
 	const nextUp = $derived(progress?.nextUp ?? null);
 
 	// "Watched on a date…" dialog
@@ -144,13 +168,17 @@
 							? `–${year(title.endDate)}`
 							: ''),
 					title.certification,
-					title.mediaType === 'movie'
-						? formatRuntime(title.runtime)
-						: title.seasons.filter((s) => s.number > 0).length > 1
-							? `${title.seasons.filter((s) => s.number > 0).length} seasons`
-							: title.episodeCount
-								? `${title.episodeCount} episodes`
-								: null,
+					title.mediaType === 'book'
+						? title.pages
+							? `${title.pages} pages`
+							: null
+						: title.mediaType === 'movie'
+							? formatRuntime(title.runtime)
+							: title.seasons.filter((s) => s.number > 0).length > 1
+								? `${title.seasons.filter((s) => s.number > 0).length} seasons`
+								: title.episodeCount
+									? `${title.episodeCount} episodes`
+									: null,
 					title.genres.slice(0, 3).join(', ')
 				].filter(Boolean)
 			: []
@@ -161,23 +189,37 @@
 			? [
 					{ label: 'Type', value: mediaType(title.mediaType).label },
 					{
-						label: title.mediaType === 'movie' ? 'Release date' : 'First aired',
-						value: formatDate(title.startDate, 'long')
+						label:
+							title.mediaType === 'book'
+								? 'First published'
+								: title.mediaType === 'movie'
+									? 'Release date'
+									: 'First aired',
+						// Open Library only knows the year.
+						value:
+							title.mediaType === 'book'
+								? year(title.startDate)
+								: formatDate(title.startDate, 'long')
 					},
 					{ label: 'Ended', value: formatDate(title.endDate, 'long') },
 					{
 						label:
-							title.isAnime && title.ref.provider === 'anilist'
-								? 'Studio'
-								: title.mediaType === 'movie'
-									? 'Production'
-									: 'Network',
+							title.mediaType === 'book'
+								? title.companies.length > 1
+									? 'Authors'
+									: 'Author'
+								: title.isAnime && title.ref.provider === 'anilist'
+									? 'Studio'
+									: title.mediaType === 'movie'
+										? 'Production'
+										: 'Network',
 						value: title.companies.join(', ')
 					},
 					{
 						label: 'Episode length',
 						value: title.mediaType === 'movie' ? '' : formatRuntime(title.runtime)
 					},
+					{ label: 'Pages', value: title.pages ? String(title.pages) : '' },
 					{
 						label: 'Original title',
 						value: title.originalName !== title.name ? title.originalName : ''
@@ -248,6 +290,9 @@
 						{title.name}
 					</h1>
 				{/if}
+				{#if title.mediaType === 'book' && title.companies.length}
+					<p class="mt-1 text-base text-fg/80 md:text-lg">by {title.companies.join(', ')}</p>
+				{/if}
 				<p class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg/80">
 					{#if title.rating}
 						<span class="flex items-center gap-1 font-medium text-fg">
@@ -272,39 +317,41 @@
 		<!-- Tracking -->
 		{#if tracker && definition && title}
 			<section class="flex flex-wrap items-center gap-3">
-				{#if title.mediaType === 'movie'}
+				{#if whole}
 					{#if tracker.moviePlays > 0}
 						<button
 							type="button"
-							onclick={() => tracker.unwatch({ type: 'movie' })}
+							onclick={() => tracker.unwatch(whole.target)}
 							class="inline-flex items-center gap-2 rounded-full bg-success px-5 py-2.5 text-sm font-semibold text-bg transition active:scale-95"
-							title="Mark unwatched"
+							title={whole.undoLabel}
 						>
 							<Check class="size-4" strokeWidth={3} />
-							Watched{tracker.moviePlays > 1 ? ` ${tracker.moviePlays}×` : ''}
+							{whole.doneLabel}{tracker.moviePlays > 1 ? ` ${tracker.moviePlays}×` : ''}
 						</button>
 						<button
 							type="button"
-							onclick={() => tracker.watch({ type: 'movie' }, { rewatch: true })}
+							onclick={() => tracker.watch(whole.target, { rewatch: true })}
 							class="inline-flex items-center gap-2 rounded-full bg-surface-2 px-4 py-2.5 text-sm font-semibold transition hover:bg-border active:scale-95"
 						>
-							<RotateCcw class="size-4" /> Watch again
+							<RotateCcw class="size-4" />
+							{whole.againLabel}
 						</button>
 					{:else}
 						<button
 							type="button"
-							onclick={() => tracker.watch({ type: 'movie' })}
+							onclick={() => tracker.watch(whole.target)}
 							class="inline-flex items-center gap-2 rounded-full bg-fg px-5 py-2.5 text-sm font-semibold text-bg transition hover:opacity-90 active:scale-95"
 						>
-							<Check class="size-4" strokeWidth={3} /> Mark watched
+							<Check class="size-4" strokeWidth={3} />
+							{whole.markLabel}
 						</button>
 					{/if}
 					<button
 						type="button"
-						onclick={() => pickDate({ type: 'movie' }, title.name, tracker.moviePlays > 0)}
+						onclick={() => pickDate(whole.target, title.name, tracker.moviePlays > 0)}
 						class="text-sm font-medium text-muted hover:text-fg"
 					>
-						Watched on a date…
+						{whole.dateLabel}
 					</button>
 				{:else if nextUp}
 					<button
@@ -330,9 +377,13 @@
 				<LibraryStatusMenu
 					status={tracker.state.status}
 					labels={definition.statusLabels}
+					addLabel={definition.addLabel}
 					onselect={(status) => tracker.setStatus(status)}
 					onremove={() => tracker.remove()}
 				/>
+				{#if title.mediaType === 'book'}
+					<ReadingProgressControl {tracker} pages={title.pages ?? null} />
+				{/if}
 				{#if progress && progress.aired > 0 && (progress.watched > 0 || tracker.state.status)}
 					<div class="w-full max-w-md space-y-1.5">
 						<ProgressBar percent={progress.percent} />

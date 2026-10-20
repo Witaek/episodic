@@ -13,6 +13,8 @@ export interface WatchStats {
 		minutes: number;
 		episodes: number;
 		movies: number;
+		/** Books finished. */
+		books: number;
 		titles: number;
 		completed: number;
 		currentStreak: number;
@@ -82,7 +84,10 @@ export function watchStats(userId: number, range: StatsRange, now = new Date()):
 		.all();
 
 	const yearStart = new Date(now.getFullYear(), 0, 1);
-	const inRange = range === 'all' ? rows : rows.filter((r) => r.occurredAt >= yearStart);
+	const inYear = range === 'all' ? rows : rows.filter((r) => r.occurredAt >= yearStart);
+	// Books are counted, not timed: watch time, the chart and genres cover video only.
+	const books = inYear.filter((r) => r.mediaType === 'book').length;
+	const inRange = inYear.filter((r) => r.mediaType !== 'book');
 
 	const category = (r: (typeof rows)[number]): StatsCategory =>
 		r.mediaType === 'movie' ? 'movie' : r.isAnime ? 'anime' : 'show';
@@ -97,6 +102,7 @@ export function watchStats(userId: number, range: StatsRange, now = new Date()):
 	}
 	const monthIndex = new Map(months.map((m, i) => [m.month, i]));
 	for (const r of rows) {
+		if (r.mediaType === 'book') continue;
 		const i = monthIndex.get(monthKey(r.occurredAt));
 		if (i !== undefined) months[i].minutes[category(r)] += minutesOf(r);
 	}
@@ -136,7 +142,7 @@ export function watchStats(userId: number, range: StatsRange, now = new Date()):
 		).length;
 
 	const { current, longest } = streaks(
-		inRange.map((r) => localDateString(r.occurredAt)),
+		inYear.map((r) => localDateString(r.occurredAt)),
 		localDateString(now)
 	);
 
@@ -146,6 +152,7 @@ export function watchStats(userId: number, range: StatsRange, now = new Date()):
 			minutes,
 			episodes: episodesCount,
 			movies,
+			books,
 			titles: perTitle.size,
 			completed: completedInRange,
 			currentStreak: current,

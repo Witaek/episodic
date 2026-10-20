@@ -5,7 +5,7 @@
 <h1 align="center">Episodic</h1>
 
 <p align="center">
-  A self-hosted tracker for TV shows, anime and movies.<br />
+  A self-hosted tracker for TV shows, anime, movies and books.<br />
   Know exactly where you are in every show, and when the next episode airs.
 </p>
 
@@ -30,8 +30,9 @@
 - **Calendar**: a month view of what's airing, plus an iCal feed for your phone's calendar.
 - **Notifications** when new episodes come out, on your phone (Web Push), ntfy or Discord.
 - **Stats**: watch time, streaks, monthly chart, top genres and shows.
+- **Books**: search Open Library, track Want to read / Reading / Read, and your current page.
 
-Later: where-to-watch, Jellyfin/Plex auto-tracking, and books and manga.
+Later: manga, where-to-watch, and Jellyfin/Plex auto-tracking.
 
 ## Quick start
 
@@ -72,10 +73,11 @@ Open `http://<your-server>:8787`.
 - [x] **Phase 4**: installable PWA and UI polish
 - [x] **Phase 5**: backups, export and restore, settings (**v1.0**)
 - [x] **Phase 6**: calendar view, iCal feed, notifications, stats
-- [ ] Later: where to watch, spoiler mode, Jellyfin/Plex/Trakt integrations, books and manga
+- [x] **Books**: Open Library search, reading statuses, page progress
+- [ ] Later: manga, where to watch, spoiler mode, Jellyfin/Plex/Trakt integrations
 
 ## Credits
 
 Metadata comes from [TMDB](https://www.themoviedb.org), [AniList](https://anilist.co) and
-[TVmaze](https://www.tvmaze.com). This product uses the TMDB API but is not endorsed or certified by
+[TVmaze](https://www.tvmaze.com) and [Open Library](https://openlibrary.org). This product uses the TMDB API but is not endorsed or certified by
 TMDB.

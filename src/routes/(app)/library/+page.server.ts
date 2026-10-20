@@ -1,8 +1,8 @@
 import { LIBRARY_STATUSES, type LibraryStatus } from '$lib/media-types/types';
-import { libraryCounts, listLibrary, type LibrarySort } from '$lib/server/services/library';
+import { listLibrary, type LibrarySort } from '$lib/server/services/library';
 import type { PageServerLoad } from './$types';
 
-const TYPES = ['all', 'tv', 'anime', 'movie'] as const;
+const TYPES = ['all', 'tv', 'anime', 'movie', 'book'] as const;
 const SORTS: LibrarySort[] = ['activity', 'added', 'name'];
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -15,12 +15,22 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const sortParam = url.searchParams.get('sort') as LibrarySort | null;
 	const sort = sortParam && SORTS.includes(sortParam) ? sortParam : 'activity';
 
-	const items = listLibrary(user.id, user.prefs, { statuses: [status], sort }).filter((item) => {
+	// Everything of this type, so the status tabs can show counts for the same filter.
+	const ofType = listLibrary(user.id, user.prefs, { sort }).filter((item) => {
 		if (type === 'movie') return item.mediaType === 'movie';
+		if (type === 'book') return item.mediaType === 'book';
 		if (type === 'anime') return item.isAnime;
 		if (type === 'tv') return item.mediaType === 'show';
-		return true;
+		// "All" means everything you watch; books have their own tab.
+		return item.mediaType !== 'book';
 	});
 
-	return { status, type, sort, items, counts: libraryCounts(user.id) };
+	const counts = Object.fromEntries(LIBRARY_STATUSES.map((s) => [s, 0])) as Record<
+		LibraryStatus,
+		number
+	>;
+	for (const item of ofType) counts[item.status]++;
+	const items = ofType.filter((item) => item.status === status);
+
+	return { status, type, sort, items, counts };
 };

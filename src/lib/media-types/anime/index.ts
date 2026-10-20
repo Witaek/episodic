@@ -12,6 +12,7 @@ export const anime: MediaTypeDefinition = {
 	searchFilter: 'anime',
 	progressModel: 'episodic',
 	statusLabels: VIDEO_STATUS_LABELS,
+	addLabel: 'Add to Watchlist',
 	consumedLabel: 'Watched',
 	providers: { search: ['anilist', 'tmdb'], details: ['tmdb', 'anilist'] },
 	formatUnit: formatEpisodeCode

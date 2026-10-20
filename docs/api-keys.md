@@ -47,4 +47,4 @@ None of these are needed for v1.0. They will be documented here when the related
 
 - **Trakt client ID**: for importing or syncing Trakt history.
 - **AniList OAuth client**: for syncing your progress back to your AniList account.
-- **Google Books key**: for better book search, once books are supported.
+- **Google Books key**: could improve book search in the future; not used today.

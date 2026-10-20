@@ -20,6 +20,7 @@ export default function globalSetup() {
 	put.run(`search:anilist:all:en-US:${query}`, JSON.stringify(searchResults), farFuture);
 	put.run(`search:anilist:anime:en-US:${query}`, JSON.stringify(searchResults), farFuture);
 	put.run('trending:anime:en-US', JSON.stringify(searchResults), farFuture);
+	put.run('trending:book:en-US', JSON.stringify([]), farFuture);
 	put.run(`title:anilist:${ANIME_ID}`, JSON.stringify(title), farFuture);
 	put.run(`season:anilist:${ANIME_ID}`, JSON.stringify(season), farFuture);
 	sqlite.close();

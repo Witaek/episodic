@@ -5,6 +5,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-20
+
+Books.
+
+### Added
+
+- Books, from Open Library (no API key): a Books tab in search and Library, trending books,
+  book pages with author, pages and subjects, and reading statuses (Want to read, Reading, Read,
+  On hold, Dropped).
+- Reading progress by page, with a progress bar. Reaching the last page marks the book as read.
+  "Mark as read", "Read again" and "Finished on a date…" work like movies.
+- Home: a "Continue reading" row. History: finished books and rereads. Stats: books read (not
+  counted in watch time). Export and restore include books.
+
+### Fixed
+
+- Library status counts now follow the selected type.
+
 ## [1.1.1] - 2026-10-20
 
 ### Fixed

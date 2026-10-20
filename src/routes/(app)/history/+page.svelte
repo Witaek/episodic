@@ -20,7 +20,8 @@
 		{ id: 'all', label: 'All' },
 		{ id: 'tv', label: 'TV shows' },
 		{ id: 'anime', label: 'Anime' },
-		{ id: 'movie', label: 'Movies' }
+		{ id: 'movie', label: 'Movies' },
+		{ id: 'book', label: 'Books' }
 	];
 
 	async function loadMore() {

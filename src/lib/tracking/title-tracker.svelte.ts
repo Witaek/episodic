@@ -6,6 +6,7 @@ import {
 	markWatched,
 	removeFromLibrary,
 	setLibraryStatus,
+	setReadingPage,
 	undoEvents,
 	type TitleRefLike
 } from './client';
@@ -119,6 +120,20 @@ export class TitleTracker {
 		}
 	}
 
+	/** Books: save the current page. */
+	async setPage(page: number) {
+		const previous = $state.snapshot(this.state);
+		this.state.reading = { page, pages: this.state.reading?.pages ?? null };
+		try {
+			const result = await setReadingPage(this.ref, page);
+			this.state = result.state;
+			if (result.finished) toast.success('Finished! Marked as read');
+			else toast.success(`Saved: page ${page}`);
+		} catch {
+			this.state = previous;
+		}
+	}
+
 	async unwatch(target: WatchTarget, message = 'Marked unwatched') {
 		const snapshot = $state.snapshot(this.state);
 		this.applyOptimistic(target, -1);
@@ -137,6 +152,8 @@ export class TitleTracker {
 				return `${formatEpisodeCode({ season: target.season, number: target.number })} ${verb}`;
 			case 'movie':
 				return rewatch ? 'Rewatch logged' : 'Marked as watched';
+			case 'book':
+				return rewatch ? 'Reread logged' : 'Marked as read';
 			default:
 				return `${count} episode${count === 1 ? '' : 's'} marked as watched`;
 		}
@@ -147,7 +164,7 @@ export class TitleTracker {
 		const key =
 			target.type === 'episode'
 				? episodeKey(target.season, target.number)
-				: target.type === 'movie'
+				: target.type === 'movie' || target.type === 'book'
 					? MOVIE_KEY
 					: null;
 		if (!key) return;

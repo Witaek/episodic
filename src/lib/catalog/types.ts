@@ -3,13 +3,13 @@
  * Providers (TMDB, AniList, …) translate their responses into these shapes.
  */
 
-export type ProviderId = 'tmdb' | 'anilist' | 'tvmaze';
+export type ProviderId = 'tmdb' | 'anilist' | 'tvmaze' | 'openlibrary';
 
-/** Media types known to the registry (see src/lib/media-types). Books and manga come later. */
-export type MediaTypeId = 'movie' | 'show' | 'anime';
+/** Media types known to the registry (see src/lib/media-types). */
+export type MediaTypeId = 'movie' | 'show' | 'anime' | 'book';
 
 /** Routing segment for a title page: /title/{kind}/{id}. */
-export type TitleKind = 'movie' | 'tv' | 'anime';
+export type TitleKind = 'movie' | 'tv' | 'anime' | 'book';
 
 export interface Image {
 	url: string;
@@ -107,6 +107,8 @@ export interface TitleDetails {
 	endDate: string | null;
 	/** Typical runtime in minutes. */
 	runtime: number | null;
+	/** Books: page count. */
+	pages?: number | null;
 	rating: number | null;
 	certification: string | null;
 	/** Networks for TV, studios for anime, production companies for movies. */
@@ -118,12 +120,14 @@ export interface TitleDetails {
 	lastEpisode: EpisodeSummary | null;
 	recommendations: SearchResult[];
 	trailerUrl: string | null;
-	externalIds: Partial<Record<'tmdb' | 'imdb' | 'tvdb' | 'anilist' | 'mal' | 'tvmaze', string>>;
+	externalIds: Partial<
+		Record<'tmdb' | 'imdb' | 'tvdb' | 'anilist' | 'mal' | 'tvmaze' | 'openlibrary', string>
+	>;
 	/** Where the data came from, for attribution and "open on …" links. */
 	sourceUrl: string | null;
 }
 
-export type SearchFilter = 'all' | 'tv' | 'anime' | 'movie';
+export type SearchFilter = 'all' | 'tv' | 'anime' | 'movie' | 'book';
 
 export function titleHref(ref: Pick<TitleRef, 'kind' | 'id'>, season?: number | null): string {
 	const base = `/title/${ref.kind}/${encodeURIComponent(ref.id)}`;

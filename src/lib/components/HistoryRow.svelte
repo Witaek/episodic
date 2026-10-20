@@ -42,6 +42,8 @@
 							number: item.episode.number
 						})}</span
 					>{item.episode.name ? ` · ${item.episode.name}` : ''}
+				{:else if item.title.mediaType === 'book'}
+					Finished reading
 				{:else}
 					Movie
 				{/if}
@@ -52,7 +54,8 @@
 					<span
 						class="inline-flex items-center gap-1 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold"
 					>
-						<Repeat class="size-3" /> Rewatch
+						<Repeat class="size-3" />
+						{item.title.mediaType === 'book' ? 'Reread' : 'Rewatch'}
 					</span>
 				{/if}
 			</p>

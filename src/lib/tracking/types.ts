@@ -36,7 +36,14 @@ export interface TitleUserState {
 	/** Watch counts keyed by episodeKey(); movies use the key "movie". */
 	watched: Record<string, number>;
 	progress: ProgressSummary | null;
+	/** Books: current page and page count. */
+	reading: ReadingProgress | null;
 	lastActivityAt: string | null;
+}
+
+export interface ReadingProgress {
+	page: number | null;
+	pages: number | null;
 }
 
 export const EMPTY_STATE: TitleUserState = {
@@ -44,9 +51,11 @@ export const EMPTY_STATE: TitleUserState = {
 	status: null,
 	watched: {},
 	progress: null,
+	reading: null,
 	lastActivityAt: null
 };
 
+/** Key in `watched` for titles tracked as a whole (movies and books). */
 export const MOVIE_KEY = 'movie';
 
 export function episodeKey(seasonNumber: number, number: number): string {
@@ -59,7 +68,8 @@ export type WatchTarget =
 	| { type: 'season'; season: number }
 	| { type: 'upTo'; season: number; number: number }
 	| { type: 'all' }
-	| { type: 'movie' };
+	| { type: 'movie' }
+	| { type: 'book' };
 
 export interface WatchResponse {
 	eventIds: number[];
@@ -84,6 +94,7 @@ export interface LibraryItem {
 	addedAt: string;
 	lastActivityAt: string | null;
 	progress: ProgressSummary | null;
+	reading?: ReadingProgress | null;
 }
 
 export interface HistoryItem {

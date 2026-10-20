@@ -133,6 +133,8 @@ export const titles = sqliteTable(
 		startDate: text('start_date'),
 		endDate: text('end_date'),
 		runtime: integer('runtime'),
+		/** Books: page count. */
+		pages: integer('pages'),
 		rating: real('rating'),
 		externalIds: text('external_ids', { mode: 'json' })
 			.$type<Record<string, string | undefined>>()

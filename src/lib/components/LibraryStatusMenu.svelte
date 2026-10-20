@@ -7,11 +7,12 @@
 	interface Props {
 		status: LibraryStatus | null;
 		labels: Record<LibraryStatus, string>;
+		addLabel: string;
 		onselect: (status: LibraryStatus) => void;
 		onremove: () => void;
 	}
 
-	let { status, labels, onselect, onremove }: Props = $props();
+	let { status, labels, addLabel, onselect, onremove }: Props = $props();
 </script>
 
 <div class="inline-flex">
@@ -49,7 +50,7 @@
 			class="inline-flex items-center gap-2 rounded-l-full bg-accent py-2 pr-3 pl-4 text-sm font-semibold text-accent-fg transition hover:brightness-110 active:scale-95"
 		>
 			<Plus class="size-4" strokeWidth={3} />
-			Add to {labels.planned}
+			{addLabel}
 		</button>
 		<DropdownMenu.Root>
 			<DropdownMenu.Trigger

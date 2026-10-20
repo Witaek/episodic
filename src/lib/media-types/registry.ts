@@ -1,14 +1,15 @@
 import type { MediaTypeId, SearchFilter } from '$lib/catalog/types';
 import { anime } from './anime';
+import { book } from './book';
 import { movie } from './movie';
 import { show } from './show';
 import type { MediaTypeDefinition } from './types';
 
 /**
- * Every media type the app knows about. To add one (e.g. books), create a folder next to
+ * Every media type the app knows about. To add one, create a folder next to
  * `movie/` exporting a MediaTypeDefinition and register it here. See docs/architecture.md.
  */
-const definitions: MediaTypeDefinition[] = [show, anime, movie];
+const definitions: MediaTypeDefinition[] = [show, anime, movie, book];
 
 const byId = new Map(definitions.map((definition) => [definition.id, definition]));
 

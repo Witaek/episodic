@@ -3,7 +3,7 @@ import { requireUser } from '$lib/server/api';
 import { listHistory, type HistoryType } from '$lib/server/services/history';
 import type { RequestHandler } from './$types';
 
-const TYPES: HistoryType[] = ['all', 'tv', 'anime', 'movie'];
+const TYPES: HistoryType[] = ['all', 'tv', 'anime', 'movie', 'book'];
 
 /** Next page of history ("Load more"). */
 export const GET: RequestHandler = ({ locals, url }) => {

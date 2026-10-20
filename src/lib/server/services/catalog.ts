@@ -10,7 +10,7 @@ import { cached, HOUR } from '../cache';
 import { config } from '../config';
 import { mappingsByAnilistIds } from '../providers/anime-mapping';
 import { ProviderError } from '../providers/http';
-import { anilist, tmdb, type LocaleOptions } from '../providers';
+import { anilist, openlibrary, tmdb, type LocaleOptions } from '../providers';
 
 /**
  * Catalog: search, browse and title details across providers, with caching.
@@ -43,6 +43,13 @@ export async function search(
 	const q = query.trim().replace(/\s+/g, ' ');
 	const tmdbReady = tmdb.isConfigured();
 	if (!q) return { results: [], tmdbMissing: !tmdbReady };
+
+	if (filter === 'book') {
+		const results = await cached(`search:openlibrary:${q.toLowerCase()}`, TTL.search, () =>
+			openlibrary.search(q)
+		);
+		return { results, tmdbMissing: false };
+	}
 
 	const key = (provider: string) =>
 		`search:${provider}:${filter}:${locale.language}:${q.toLowerCase()}`;
@@ -112,6 +119,16 @@ export async function getTitle(
 	locale = defaultLocale(),
 	{ fresh }: FetchOptions = {}
 ): Promise<TitleLookup> {
+	if (kind === 'book') {
+		const title = await cached(
+			`title:openlibrary:${id}`,
+			TTL.title,
+			() => openlibrary.getTitle('book', id, locale),
+			{ fresh }
+		);
+		return { title };
+	}
+
 	if (kind === 'anime') {
 		// Anime is tracked TV-style: open the TMDB show when the mapping knows it.
 		const mapping = mappingsByAnilistIds([Number(id)]).get(Number(id));

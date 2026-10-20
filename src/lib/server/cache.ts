@@ -10,12 +10,18 @@ const inFlight = new Map<string, Promise<unknown>>();
 
 /**
  * Returns a cached value, or computes and stores it. Concurrent calls for the same key share
- * one computation. Falls back to the stale value when the refresh fails.
+ * one computation. Falls back to the stale value when the refresh fails. `fresh` skips the
+ * cached value (used by background refreshes) but still updates the cache.
  */
-export async function cached<T>(key: string, ttlMs: number, compute: () => Promise<T>): Promise<T> {
+export async function cached<T>(
+	key: string,
+	ttlMs: number,
+	compute: () => Promise<T>,
+	{ fresh = false }: { fresh?: boolean } = {}
+): Promise<T> {
 	const db = getDb();
 	const row = db.select().from(apiCache).where(eq(apiCache.key, key)).get();
-	if (row && row.expiresAt.getTime() > Date.now()) return JSON.parse(row.value) as T;
+	if (!fresh && row && row.expiresAt.getTime() > Date.now()) return JSON.parse(row.value) as T;
 
 	const pending = inFlight.get(key) as Promise<T> | undefined;
 	if (pending) return pending;

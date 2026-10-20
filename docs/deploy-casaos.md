@@ -44,20 +44,28 @@ described in [configuration.md](configuration.md).
 
 Click **Install**. The first start takes a little longer while CasaOS downloads the image.
 
-## 3. Open Episodic
+## 3. Open Episodic and create your account
 
 Click the Episodic icon on the dashboard, or open `http://<casaos-ip>:8787`.
 
-You land on the home page with trending shows, movies and anime. To check that everything is set
-up, open **Settings**. Under _System status_:
+The first time, Episodic asks you to **create the admin account**: choose a username and a
+password (at least 8 characters). You're signed in straight away.
+
+> Do this right after installing. Until an admin account exists, anyone who can reach the page can
+> create it. To skip this step, set `ADMIN_USERNAME` and `ADMIN_PASSWORD` before installing.
+
+To check that everything is set up, open **Settings**. Under _System status_:
 
 - **Database** is green when `/data` is writable.
 - **TMDB** is green when your token is set.
 - **Anime id mapping** turns green a few seconds after the first start, once the mapping has been
   downloaded.
 
-> **Early version:** search and title pages work. Sign-in, the library and tracking arrive in the
-> next phases. You'll update the app as described in [Updating](#updating).
+### Add the rest of your household
+
+Go to **Settings → Users → Add an account**. Each person gets their own library, history and
+settings, and can change their password under **Settings → Password**. As an admin you can also
+reset passwords, disable accounts, or make someone else an admin.
 
 ## 4. Access from your phone with HTTPS (recommended)
 
@@ -101,7 +109,20 @@ To back up manually, stop the app in CasaOS and copy that folder.
 | **Database** is red                              | The data folder isn't writable. Check the `/data` volume and that `PUID`/`PGID` match a real user (`id` in a CasaOS terminal shows yours). |
 | **TMDB token** is red                            | The token is missing or wrong. Paste the **API Read Access Token**, not the short "API Key".                                               |
 | "Cross-site request blocked"                     | Add the address in your browser's address bar to `ALLOWED_ORIGINS`.                                                                        |
+| Forgot your password                             | Ask an admin to reset it in **Settings → Users**. If you were the only admin, see [troubleshooting](#lost-admin-password).                 |
 | Image fails to pull ("denied" or "unauthorized") | The image package isn't public yet. See the note on image publishing in [development.md](development.md#releasing).                        |
 
 To see logs: in CasaOS, open the app's ⋮ menu → **Logs**. Or run `docker logs episodic` in a
 terminal.
+
+### Lost admin password
+
+Open a terminal on the CasaOS host (Settings → Terminal, or SSH) and run, with your own username
+and a new password:
+
+```bash
+docker exec -it -u 1000:1000 episodic node reset-password.js yourname 'new-password-here' --admin
+```
+
+This resets the password, re-enables the account, makes it admin (`--admin`, optional) and signs
+it out everywhere. If you changed `PUID`/`PGID`, use those numbers after `-u`.

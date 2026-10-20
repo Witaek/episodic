@@ -22,7 +22,9 @@ const schema = z.object({
 	METADATA_LANGUAGE: z.string().default('en-US'),
 	METADATA_REGION: z.string().default('US'),
 	TZ: z.string().default('UTC'),
-	BACKUP_RETENTION_DAYS: z.coerce.number().int().min(0).default(14)
+	BACKUP_RETENTION_DAYS: z.coerce.number().int().min(0).default(14),
+	ADMIN_USERNAME: z.preprocess(blankToUndefined, z.string().optional()),
+	ADMIN_PASSWORD: z.preprocess(blankToUndefined, z.string().optional())
 });
 
 export type Config = z.infer<typeof schema> & { dataDir: string; databasePath: string };

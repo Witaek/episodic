@@ -7,6 +7,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Accounts: first-run setup page (or `ADMIN_USERNAME`/`ADMIN_PASSWORD`), sign-in with throttling,
+  30-day sessions, password change, "sign out other devices".
+- Admin Users screen: create accounts, reset passwords, disable, change role, delete.
+- Library: Watchlist, Watching, Completed, On hold, Dropped, with type filter and sorting.
+- One-tap tracking: episodes, whole seasons, "mark all up to here", rewatches, custom watch dates,
+  unwatch, and Undo on every action. Marking an episode offers to mark earlier ones too.
+- Movies: mark watched, watch again, watched on a date.
+- Home: Up Next cards with a one-tap ✓ that advances to the next episode, plus your watchlist.
+- Automatic statuses: watching moves a title to Watching, finishing an ended show moves it to
+  Completed, unwatched episodes move it back.
+- Preference to count specials (season 0) in progress.
 - Search across TV shows, anime and movies (All / TV shows / Anime / Movies), with trending titles.
 - Title pages: backdrop, poster, logo, airing status, synopsis, trailer, seasons and episodes, cast,
   details and "More like this".

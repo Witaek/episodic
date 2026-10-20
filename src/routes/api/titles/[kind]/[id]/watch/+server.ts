@@ -1,0 +1,42 @@
+import { json } from '@sveltejs/kit';
+import { z } from 'zod';
+import type { WatchResponse } from '$lib/tracking/types';
+import {
+	handleErrors,
+	parseBody,
+	parseTitleParams,
+	requireUser,
+	watchTargetSchema
+} from '$lib/server/api';
+import { getUserTitleState } from '$lib/server/services/library';
+import { ensureTitle } from '$lib/server/services/titles';
+import { watch } from '$lib/server/services/tracking';
+import type { RequestHandler } from './$types';
+
+const body = z.object({
+	target: watchTargetSchema,
+	watchedAt: z.iso.datetime({ offset: true }).optional(),
+	rewatch: z.boolean().optional()
+});
+
+export const POST: RequestHandler = async ({ locals, params, request }) => {
+	const user = requireUser(locals);
+	const { kind, id } = parseTitleParams(params);
+	const input = await parseBody(request, body);
+	return handleErrors(async () => {
+		const title = await ensureTitle(kind, id);
+		const watchedAt = input.watchedAt ? new Date(input.watchedAt) : undefined;
+		if (watchedAt && watchedAt.getTime() > Date.now() + 60_000) {
+			return json({ error: "The watch date can't be in the future" }, { status: 400 });
+		}
+		const result = watch(user.id, title, input.target, user.prefs, {
+			watchedAt,
+			rewatch: input.rewatch
+		});
+		const response: WatchResponse = {
+			...result,
+			state: getUserTitleState(user.id, title, user.prefs)
+		};
+		return json(response);
+	});
+};

@@ -49,6 +49,30 @@ page load (+page.server.ts)
 Pages never call providers directly, and providers never touch the UI. Everything between them uses
 the types in `src/lib/catalog/types.ts`.
 
+## Accounts and access
+
+- `hooks.server.ts` reads the session cookie and sets `locals.user`. Every page except `/login`,
+  `/setup` and `/api/health` requires a signed-in user: pages redirect to `/login`, and API
+  routes answer 401.
+- Until the first account exists, everything redirects to `/setup`.
+- Cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` when the request came over HTTPS (directly or
+  via `X-Forwarded-Proto`, as with Tailscale Serve).
+- Each user's library, history and preferences are separate. Title and episode metadata is shared.
+
+## Tracking model
+
+- **Local titles.** Adding a title or marking anything stores the title, its seasons and its episodes
+  in `titles`, `seasons` and `episodes`. Episodes are upserted by (season, number), so their ids stay
+  stable when metadata is refreshed and history keeps pointing at the right rows.
+- **Activity.** Every watch is one row in `activity_events`, and rewatches add more rows. "Watched"
+  means at least one row exists. Unwatching removes the most recent row, and Undo removes exactly
+  the rows a previous action created.
+- **Next up** is the first aired, unwatched episode after the furthest watched one, so a skipped
+  episode doesn't block progress. Specials (season 0) count only when the user enables it.
+- **Automatic statuses** (`applyAutoStatus` in `tracking.ts`): watching moves a title to Watching;
+  every aired episode of an ended or canceled show watched → Completed; a Completed show with
+  unwatched aired episodes → Watching; a watched movie → Completed.
+
 ## Metadata sources
 
 | Provider    | Used for                                                                                 | Rate limit used                  |

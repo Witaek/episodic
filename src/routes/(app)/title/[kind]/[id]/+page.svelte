@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { ArrowLeft, ExternalLink, Play, Star } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		Check,
+		CheckCheck,
+		ExternalLink,
+		Play,
+		RotateCcw,
+		Star
+	} from '@lucide/svelte';
 	import { airingSummary } from '$lib/catalog/airing';
 	import EpisodeRow from '$lib/components/EpisodeRow.svelte';
 	import Img from '$lib/components/Img.svelte';
@@ -8,13 +16,48 @@
 	import SetupNotice from '$lib/components/SetupNotice.svelte';
 	import StatusChip from '$lib/components/StatusChip.svelte';
 	import { formatDate, formatRuntime, year } from '$lib/format';
+	import LibraryStatusMenu from '$lib/components/LibraryStatusMenu.svelte';
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import WatchDateDialog from '$lib/components/WatchDateDialog.svelte';
 	import { mediaType } from '$lib/media-types/registry';
+	import { formatEpisodeCode } from '$lib/media-types/types';
+	import { TitleTracker } from '$lib/tracking/title-tracker.svelte';
+	import { EMPTY_STATE, type WatchTarget } from '$lib/tracking/types';
 
 	let { data } = $props();
 
 	let overviewExpanded = $state(false);
 
 	const title = $derived(data.setupNeeded ? null : data.title);
+
+	const definition = $derived(title ? mediaType(title.mediaType) : null);
+	const tracker = $derived(
+		title && definition
+			? new TitleTracker(
+					{ kind: title.ref.kind, id: title.ref.id },
+					data.setupNeeded ? EMPTY_STATE : data.state,
+					definition.statusLabels
+				)
+			: null
+	);
+	const progress = $derived(tracker?.state.progress ?? null);
+	const nextUp = $derived(progress?.nextUp ?? null);
+
+	// "Watched on a date…" dialog
+	let dateDialog = $state<{
+		open: boolean;
+		label: string;
+		target: WatchTarget | null;
+		rewatch: boolean;
+	}>({
+		open: false,
+		label: '',
+		target: null,
+		rewatch: false
+	});
+	function pickDate(target: WatchTarget, label: string, rewatch = false) {
+		dateDialog = { open: true, label, target, rewatch };
+	}
 	const airing = $derived(title ? airingSummary(title) : null);
 	// Specials (season 0) go last.
 	const seasons = $derived(
@@ -147,6 +190,84 @@
 	</div>
 
 	<div class="mx-auto max-w-6xl space-y-10 px-4 pt-5 pb-10 md:px-8">
+		<!-- Tracking -->
+		{#if tracker && definition && title}
+			<section class="flex flex-wrap items-center gap-3">
+				{#if title.mediaType === 'movie'}
+					{#if tracker.moviePlays > 0}
+						<button
+							type="button"
+							onclick={() => tracker.unwatch({ type: 'movie' })}
+							class="inline-flex items-center gap-2 rounded-full bg-success px-5 py-2.5 text-sm font-semibold text-bg transition active:scale-95"
+							title="Mark unwatched"
+						>
+							<Check class="size-4" strokeWidth={3} />
+							Watched{tracker.moviePlays > 1 ? ` ${tracker.moviePlays}×` : ''}
+						</button>
+						<button
+							type="button"
+							onclick={() => tracker.watch({ type: 'movie' }, { rewatch: true })}
+							class="inline-flex items-center gap-2 rounded-full bg-surface-2 px-4 py-2.5 text-sm font-semibold transition hover:bg-border active:scale-95"
+						>
+							<RotateCcw class="size-4" /> Watch again
+						</button>
+					{:else}
+						<button
+							type="button"
+							onclick={() => tracker.watch({ type: 'movie' })}
+							class="inline-flex items-center gap-2 rounded-full bg-fg px-5 py-2.5 text-sm font-semibold text-bg transition hover:opacity-90 active:scale-95"
+						>
+							<Check class="size-4" strokeWidth={3} /> Mark watched
+						</button>
+					{/if}
+					<button
+						type="button"
+						onclick={() => pickDate({ type: 'movie' }, title.name, tracker.moviePlays > 0)}
+						class="text-sm font-medium text-muted hover:text-fg"
+					>
+						Watched on a date…
+					</button>
+				{:else if nextUp}
+					<button
+						type="button"
+						onclick={() =>
+							tracker.watch({
+								type: 'episode',
+								season: nextUp.seasonNumber,
+								number: nextUp.number
+							})}
+						class="inline-flex items-center gap-2 rounded-full bg-fg px-5 py-2.5 text-sm font-semibold text-bg transition hover:opacity-90 active:scale-95"
+					>
+						<Check class="size-4" strokeWidth={3} />
+						Mark {formatEpisodeCode({ season: nextUp.seasonNumber, number: nextUp.number })} watched
+					</button>
+				{:else if progress?.upToDate}
+					<span
+						class="inline-flex items-center gap-2 rounded-full bg-success/15 px-4 py-2 text-sm font-semibold text-success"
+					>
+						<CheckCheck class="size-4" /> Up to date
+					</span>
+				{/if}
+				<LibraryStatusMenu
+					status={tracker.state.status}
+					labels={definition.statusLabels}
+					onselect={(status) => tracker.setStatus(status)}
+					onremove={() => tracker.remove()}
+				/>
+				{#if progress && progress.aired > 0 && (progress.watched > 0 || tracker.state.status)}
+					<div class="w-full max-w-md space-y-1.5">
+						<ProgressBar percent={progress.percent} />
+						<p class="text-xs text-muted">
+							{progress.watched} of {progress.aired} aired episodes watched{progress.total >
+							progress.aired
+								? ` · ${progress.total - progress.aired} still to air`
+								: ''}
+						</p>
+					</div>
+				{/if}
+			</section>
+		{/if}
+
 		<!-- Overview -->
 		<section class="max-w-3xl space-y-4">
 			{#if airing}
@@ -204,7 +325,19 @@
 		<!-- Episodes -->
 		{#if seasons.length > 0 && data.seasonNumber !== null}
 			<section class="space-y-4" id="episodes">
-				<h2 class="text-xl font-semibold tracking-tight">Episodes</h2>
+				<div class="flex items-center justify-between gap-3">
+					<h2 class="text-xl font-semibold tracking-tight">Episodes</h2>
+					{#if tracker && data.seasonNumber !== null}
+						{@const seasonNumber = data.seasonNumber}
+						<button
+							type="button"
+							onclick={() => tracker.watch({ type: 'season', season: seasonNumber })}
+							class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-muted transition hover:bg-surface-2 hover:text-fg"
+						>
+							<CheckCheck class="size-4" /> Mark season watched
+						</button>
+					{/if}
+				</div>
 				{#if seasons.length > 1}
 					<nav
 						class="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0"
@@ -253,7 +386,39 @@
 						{/if}
 						<div class="divide-y divide-border/60">
 							{#each season.episodes as episode (episode.id)}
-								<EpisodeRow {episode} {showStill} />
+								{@const code = formatEpisodeCode({
+									season: episode.seasonNumber,
+									number: episode.number
+								})}
+								{@const target = {
+									type: 'episode' as const,
+									season: episode.seasonNumber,
+									number: episode.number
+								}}
+								<EpisodeRow
+									{episode}
+									{showStill}
+									plays={tracker?.plays(episode.seasonNumber, episode.number)}
+									actions={tracker
+										? {
+												toggle: () => tracker.toggleEpisode(episode.seasonNumber, episode.number),
+												upTo: () =>
+													tracker.watch({
+														type: 'upTo',
+														season: episode.seasonNumber,
+														number: episode.number
+													}),
+												pickDate: () =>
+													pickDate(
+														target,
+														`${code} · ${episode.name ?? ''}`,
+														tracker.plays(episode.seasonNumber, episode.number) > 0
+													),
+												rewatch: () => tracker.watch(target, { rewatch: true }),
+												unwatch: () => tracker.unwatch(target, `${code} marked unwatched`)
+											}
+										: undefined}
+								/>
 							{/each}
 						</div>
 					{:else if season}
@@ -301,3 +466,13 @@
 		<div class="pb-10"><MediaRow title="More like this" items={title.recommendations} /></div>
 	{/if}
 {/if}
+
+<WatchDateDialog
+	bind:open={dateDialog.open}
+	title={dateDialog.label}
+	onconfirm={(date) => {
+		if (tracker && dateDialog.target) {
+			void tracker.watch(dateDialog.target, { watchedAt: date, rewatch: dateDialog.rewatch });
+		}
+	}}
+/>

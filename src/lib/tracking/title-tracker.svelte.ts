@@ -1,0 +1,158 @@
+import { toast } from 'svelte-sonner';
+import { formatEpisodeCode, VIDEO_STATUS_LABELS, type LibraryStatus } from '$lib/media-types/types';
+import {
+	haptic,
+	markUnwatched,
+	markWatched,
+	removeFromLibrary,
+	setLibraryStatus,
+	undoEvents,
+	type TitleRefLike
+} from './client';
+import { MOVIE_KEY, episodeKey, type TitleUserState, type WatchTarget } from './types';
+
+/**
+ * Tracking state for one title page: optimistic updates, toasts with Undo, and the
+ * "also mark earlier episodes?" offer.
+ */
+export class TitleTracker {
+	state: TitleUserState = $state()!;
+	busy = $state(false);
+
+	constructor(
+		private readonly ref: TitleRefLike,
+		initial: TitleUserState,
+		private readonly statusLabels: Record<LibraryStatus, string> = VIDEO_STATUS_LABELS
+	) {
+		this.state = initial;
+	}
+
+	plays(season: number, number: number): number {
+		return this.state.watched[episodeKey(season, number)] ?? 0;
+	}
+
+	get moviePlays(): number {
+		return this.state.watched[MOVIE_KEY] ?? 0;
+	}
+
+	async setStatus(status: LibraryStatus) {
+		const previous = this.state.status;
+		this.state.status = status;
+		try {
+			this.state = (await setLibraryStatus(this.ref, status)).state;
+			toast.success(
+				previous ? `Moved to ${this.statusLabels[status]}` : `Added to ${this.statusLabels[status]}`
+			);
+		} catch {
+			this.state.status = previous;
+		}
+	}
+
+	async remove() {
+		const previous = this.state.status;
+		this.state.status = null;
+		try {
+			this.state = (await removeFromLibrary(this.ref)).state;
+			toast('Removed from your library', {
+				description: 'Your watch history is kept.',
+				action: previous
+					? { label: 'Undo', onClick: () => void this.setStatus(previous) }
+					: undefined
+			});
+		} catch {
+			this.state.status = previous;
+		}
+	}
+
+	/** One tap on an episode's check button. */
+	async toggleEpisode(season: number, number: number) {
+		if (this.plays(season, number) > 0) {
+			await this.unwatch(
+				{ type: 'episode', season, number },
+				`${formatEpisodeCode({ season, number })} marked unwatched`
+			);
+		} else {
+			await this.watch({ type: 'episode', season, number });
+		}
+	}
+
+	async watch(target: WatchTarget, options: { watchedAt?: Date; rewatch?: boolean } = {}) {
+		const snapshot = $state.snapshot(this.state);
+		this.applyOptimistic(target, +1);
+		haptic();
+		try {
+			const result = await markWatched(this.ref, target, options);
+			this.state = result.state;
+			if (result.eventIds.length === 0) {
+				toast('Already watched', { description: 'Use "Watch again" to log a rewatch.' });
+				return;
+			}
+			const undo = {
+				label: 'Undo',
+				onClick: async () => {
+					const { states } = await undoEvents(result.eventIds);
+					const next = Object.values(states)[0];
+					if (next) this.state = next;
+				}
+			};
+			const label = this.describe(target, result.eventIds.length, options.rewatch);
+			if (result.earlierUnwatched > 0 && target.type === 'episode') {
+				const n = result.earlierUnwatched;
+				toast.success(label, {
+					description: `${n} earlier episode${n === 1 ? '' : 's'} not marked yet.`,
+					duration: 8000,
+					action: {
+						label: `Mark ${n === 1 ? 'it' : 'them'} too`,
+						onClick: () =>
+							void this.watch(
+								{ type: 'upTo', season: target.season, number: target.number },
+								{ watchedAt: options.watchedAt }
+							)
+					},
+					cancel: undo
+				});
+			} else {
+				toast.success(label, { action: undo });
+			}
+		} catch {
+			this.state = snapshot;
+		}
+	}
+
+	async unwatch(target: WatchTarget, message = 'Marked unwatched') {
+		const snapshot = $state.snapshot(this.state);
+		this.applyOptimistic(target, -1);
+		try {
+			this.state = (await markUnwatched(this.ref, target)).state;
+			toast(message);
+		} catch {
+			this.state = snapshot;
+		}
+	}
+
+	private describe(target: WatchTarget, count: number, rewatch?: boolean): string {
+		const verb = rewatch ? 'rewatched' : 'watched';
+		switch (target.type) {
+			case 'episode':
+				return `${formatEpisodeCode({ season: target.season, number: target.number })} ${verb}`;
+			case 'movie':
+				return rewatch ? 'Rewatch logged' : 'Marked as watched';
+			default:
+				return `${count} episode${count === 1 ? '' : 's'} marked as watched`;
+		}
+	}
+
+	/** Immediate feedback for single items; bulk targets wait for the server. */
+	private applyOptimistic(target: WatchTarget, delta: 1 | -1) {
+		const key =
+			target.type === 'episode'
+				? episodeKey(target.season, target.number)
+				: target.type === 'movie'
+					? MOVIE_KEY
+					: null;
+		if (!key) return;
+		const plays = Math.max(0, (this.state.watched[key] ?? 0) + delta);
+		if (plays) this.state.watched[key] = plays;
+		else delete this.state.watched[key];
+	}
+}

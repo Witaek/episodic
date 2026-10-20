@@ -35,7 +35,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/package.json ./package.json
 COPY drizzle ./drizzle
-COPY docker/entrypoint.sh docker/healthcheck.js ./
+COPY docker/entrypoint.sh docker/healthcheck.js docker/reset-password.js ./
 
 VOLUME ["/data"]
 EXPOSE 3000

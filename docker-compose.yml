@@ -23,6 +23,9 @@ services:
       METADATA_LANGUAGE: ${METADATA_LANGUAGE:-en-US}
       METADATA_REGION: ${METADATA_REGION:-US}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      # Optional: create the first admin automatically instead of using the setup page.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - ${DATA_DIR:-/DATA/AppData/episodic}:/data
     x-casaos:

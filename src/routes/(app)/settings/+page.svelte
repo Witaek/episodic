@@ -1,7 +1,12 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+	import { ChevronRight, LogOut, Users } from '@lucide/svelte';
+	import Button from '$lib/components/Button.svelte';
+	import FormField from '$lib/components/FormField.svelte';
+	import SettingsSection from '$lib/components/SettingsSection.svelte';
 	import { formatDateTime } from '$lib/format';
 
-	let { data } = $props();
+	let { data, form } = $props();
 
 	const checks = $derived([
 		{ label: 'Database', ok: data.database, detail: data.database ? 'Ready' : 'Unavailable' },
@@ -32,11 +37,137 @@
 <div
 	class="mx-auto max-w-2xl space-y-8 px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 md:px-8"
 >
-	<h1 class="text-3xl font-semibold tracking-tight">Settings</h1>
+	<div class="flex items-center justify-between gap-4">
+		<div>
+			<h1 class="text-3xl font-semibold tracking-tight">Settings</h1>
+			<p class="mt-1 text-sm text-muted">
+				Signed in as <span class="font-medium text-fg">{data.user.username}</span>{data.isAdmin
+					? ' · admin'
+					: ''}
+			</p>
+		</div>
+		<form method="POST" action="/logout">
+			<Button type="submit" variant="secondary" size="sm"><LogOut class="size-4" /> Sign out</Button
+			>
+		</form>
+	</div>
 
-	<section class="space-y-3">
-		<h2 class="text-sm font-semibold tracking-wide text-muted uppercase">System status</h2>
-		<ul class="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+	{#if data.isAdmin}
+		<a
+			href="/settings/users"
+			class="flex items-center gap-4 rounded-2xl border border-border bg-surface px-5 py-4 transition hover:border-accent/50"
+		>
+			<span class="grid size-10 place-items-center rounded-xl bg-accent/15 text-accent"
+				><Users class="size-5" /></span
+			>
+			<span class="flex-1">
+				<span class="block font-medium">Users</span>
+				<span class="block text-sm text-muted">Create accounts, reset passwords</span>
+			</span>
+			<ChevronRight class="size-5 text-muted" />
+		</a>
+	{/if}
+
+	<SettingsSection title="Profile">
+		<form
+			method="POST"
+			action="?/profile"
+			use:enhance={() =>
+				async ({ update }) =>
+					update({ reset: false })}
+			class="space-y-4 p-5"
+		>
+			<FormField
+				label="Display name"
+				name="displayName"
+				value={data.user.displayName}
+				required
+				maxlength={60}
+				error={form?.profile?.error}
+			/>
+			<div class="flex items-center justify-end gap-3">
+				{#if form?.profile?.success}<span class="text-sm text-success">Saved</span>{/if}
+				<Button type="submit" size="sm">Save</Button>
+			</div>
+		</form>
+	</SettingsSection>
+
+	<SettingsSection title="Preferences">
+		<form
+			method="POST"
+			action="?/preferences"
+			use:enhance={() =>
+				async ({ update }) =>
+					update({ reset: false })}
+			class="p-5"
+		>
+			<label class="flex items-start justify-between gap-4">
+				<span>
+					<span class="block font-medium">Count specials</span>
+					<span class="block text-sm text-muted"
+						>Include season 0 (specials, OVAs) in progress and Up next.</span
+					>
+				</span>
+				<input
+					type="checkbox"
+					name="includeSpecials"
+					checked={data.user.prefs.includeSpecials ?? false}
+					onchange={(event) => event.currentTarget.form?.requestSubmit()}
+					class="mt-1 size-5 accent-[var(--accent)]"
+				/>
+			</label>
+		</form>
+	</SettingsSection>
+
+	<SettingsSection title="Password">
+		<form method="POST" action="?/password" use:enhance class="space-y-4 p-5">
+			<FormField
+				label="Current password"
+				name="current"
+				type="password"
+				autocomplete="current-password"
+				required
+			/>
+			<FormField
+				label="New password"
+				name="password"
+				type="password"
+				autocomplete="new-password"
+				required
+				hint="At least 8 characters."
+			/>
+			<FormField
+				label="Confirm new password"
+				name="confirm"
+				type="password"
+				autocomplete="new-password"
+				required
+			/>
+			{#if form?.password?.error}<p class="text-sm text-danger">{form.password.error}</p>{/if}
+			<div class="flex items-center justify-end gap-3">
+				{#if form?.password?.success}<span class="text-sm text-success"
+						>Password changed. Other devices were signed out.</span
+					>{/if}
+				<Button type="submit" size="sm">Change password</Button>
+			</div>
+		</form>
+		<form
+			method="POST"
+			action="?/signOutOthers"
+			use:enhance
+			class="flex items-center justify-between gap-4 border-t border-border p-5"
+		>
+			<span class="text-sm text-muted">
+				{form?.sessions?.success
+					? 'Other devices were signed out.'
+					: 'Lost a device? Sign it out remotely.'}
+			</span>
+			<Button type="submit" size="sm" variant="secondary">Sign out other devices</Button>
+		</form>
+	</SettingsSection>
+
+	<SettingsSection title="System status">
+		<ul class="divide-y divide-border">
 			{#each checks as check (check.label)}
 				<li class="flex items-center justify-between gap-4 px-5 py-3.5">
 					<span class="flex items-center gap-3 font-medium">
@@ -50,14 +181,11 @@
 				</li>
 			{/each}
 		</ul>
-	</section>
+	</SettingsSection>
 
 	{#if data.jobs.length}
-		<section class="space-y-3">
-			<h2 class="text-sm font-semibold tracking-wide text-muted uppercase">Background jobs</h2>
-			<ul
-				class="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface"
-			>
+		<SettingsSection title="Background jobs">
+			<ul class="divide-y divide-border">
 				{#each data.jobs as job (job.name)}
 					<li class="px-5 py-3.5">
 						<div class="flex items-center justify-between gap-4">
@@ -79,12 +207,11 @@
 					</li>
 				{/each}
 			</ul>
-		</section>
+		</SettingsSection>
 	{/if}
 
-	<section class="space-y-3">
-		<h2 class="text-sm font-semibold tracking-wide text-muted uppercase">About</h2>
-		<div class="space-y-3 rounded-2xl border border-border bg-surface p-5 text-sm text-muted">
+	<SettingsSection title="About">
+		<div class="space-y-3 p-5 text-sm text-muted">
 			<p>
 				<span class="font-medium text-fg">Episodic</span> v{data.version} ·
 				<a class="text-accent hover:underline" href="https://github.com/Witaek/episodic">GitHub</a>
@@ -100,5 +227,5 @@
 			</p>
 			<p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
 		</div>
-	</section>
+	</SettingsSection>
 </div>

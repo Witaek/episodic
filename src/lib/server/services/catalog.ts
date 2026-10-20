@@ -101,10 +101,16 @@ export async function trendingRows(locale = defaultLocale()): Promise<BrowseRow[
 
 export type TitleLookup = { redirect: string } | { title: TitleDetails };
 
+export interface FetchOptions {
+	/** Bypass the cache (background refresh, storing a title). */
+	fresh?: boolean;
+}
+
 export async function getTitle(
 	kind: TitleKind,
 	id: string,
-	locale = defaultLocale()
+	locale = defaultLocale(),
+	{ fresh }: FetchOptions = {}
 ): Promise<TitleLookup> {
 	if (kind === 'anime') {
 		// Anime is tracked TV-style: open the TMDB show when the mapping knows it.
@@ -114,17 +120,24 @@ export async function getTitle(
 				const season = mapping.tmdbSeason && mapping.tmdbSeason > 0 ? mapping.tmdbSeason : null;
 				return { redirect: titleHref({ kind: 'tv', id: String(mapping.tmdbTvId) }, season) };
 			}
-			if (mapping.tmdbMovieId)
+			if (mapping.tmdbMovieId) {
 				return { redirect: titleHref({ kind: 'movie', id: String(mapping.tmdbMovieId) }) };
+			}
 		}
-		const title = await cached(`title:anilist:${id}`, TTL.title, () =>
-			anilist.getTitle('anime', id, locale)
+		const title = await cached(
+			`title:anilist:${id}`,
+			TTL.title,
+			() => anilist.getTitle('anime', id, locale),
+			{ fresh }
 		);
 		return { title };
 	}
 
-	const title = await cached(`title:tmdb:${kind}:${id}:${locale.language}`, TTL.title, () =>
-		tmdb.getTitle(kind, id, locale)
+	const title = await cached(
+		`title:tmdb:${kind}:${id}:${locale.language}`,
+		TTL.title,
+		() => tmdb.getTitle(kind, id, locale),
+		{ fresh }
 	);
 	return { title };
 }
@@ -133,15 +146,22 @@ export async function getSeason(
 	kind: TitleKind,
 	id: string,
 	season: number,
-	locale = defaultLocale()
+	locale = defaultLocale(),
+	{ fresh }: FetchOptions = {}
 ): Promise<Season> {
 	if (kind === 'anime') {
-		return cached(`season:anilist:${id}`, TTL.season, () =>
-			anilist.getSeason('anime', id, season, locale)
+		return cached(
+			`season:anilist:${id}`,
+			TTL.season,
+			() => anilist.getSeason('anime', id, season, locale),
+			{ fresh }
 		);
 	}
-	return cached(`season:tmdb:${id}:${season}:${locale.language}`, TTL.season, () =>
-		tmdb.getSeason('tv', id, season, locale)
+	return cached(
+		`season:tmdb:${id}:${season}:${locale.language}`,
+		TTL.season,
+		() => tmdb.getSeason('tv', id, season, locale),
+		{ fresh }
 	);
 }
 

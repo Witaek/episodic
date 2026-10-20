@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import {
 	deleteUserSessions,
 	hashPassword,
+	isSecureRequest,
 	validatePassword,
 	verifyPassword
 } from '$lib/server/auth';
@@ -106,6 +107,7 @@ export const actions: Actions = {
 			path: '/',
 			httpOnly: false,
 			sameSite: 'lax',
+			secure: isSecureRequest(request),
 			maxAge: 60 * 60 * 24 * 365 * 5
 		});
 		return { theme: { success: true, error: null } };

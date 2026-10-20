@@ -37,7 +37,7 @@ export const actions: Actions = {
 
 		const userId = await createUser({ username, displayName, password, role: 'admin' });
 		const session = createSession(userId);
-		setSessionCookie(cookies, session.token, session.expiresAt, isSecureRequest(request, url));
+		setSessionCookie(cookies, session.token, session.expiresAt, isSecureRequest(request));
 		redirect(303, '/');
 	}
 };

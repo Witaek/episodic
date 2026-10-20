@@ -63,14 +63,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (session) {
 			event.locals.user = session.user;
 			event.locals.sessionToken = token;
-			setSessionCookie(
-				event.cookies,
-				token,
-				session.expiresAt,
-				isSecureRequest(event.request, event.url)
-			);
+			setSessionCookie(event.cookies, token, session.expiresAt, isSecureRequest(event.request));
 		} else {
-			clearSessionCookie(event.cookies);
+			clearSessionCookie(event.cookies, isSecureRequest(event.request));
 		}
 	}
 

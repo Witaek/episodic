@@ -45,7 +45,7 @@ export const actions: Actions = {
 
 		clearLoginFailures(key);
 		const session = createSession(user.id);
-		setSessionCookie(cookies, session.token, session.expiresAt, isSecureRequest(request, url));
+		setSessionCookie(cookies, session.token, session.expiresAt, isSecureRequest(request));
 		redirect(303, safeRedirect(url.searchParams.get('redirectTo')));
 	}
 };

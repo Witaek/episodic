@@ -5,6 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-20
+
+### Fixed
+
+- Signing in over a plain `http://` LAN address did nothing: the session cookie was marked
+  Secure because the server assumed HTTPS, so browsers dropped it. HTTPS is now only assumed when
+  a proxy says so (`X-Forwarded-Proto`/`Forwarded`) or the request is for an `https://` `APP_URL`.
+  The theme and sign-out cookies had the same problem.
+
 ## [1.1.0] - 2026-10-20
 
 Calendar, notifications and stats.

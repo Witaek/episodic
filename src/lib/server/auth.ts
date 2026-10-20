@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { hash, verify } from '@node-rs/argon2';
 import type { Cookies } from '@sveltejs/kit';
 import { and, count, eq, gt, lt, ne } from 'drizzle-orm';
+import { config } from './config';
 import { getDb } from './db/client';
 import { sessions, users, type UserPrefs } from './db/schema';
 
@@ -172,13 +173,27 @@ export function setSessionCookie(
 	});
 }
 
-export function clearSessionCookie(cookies: Cookies) {
-	cookies.delete(SESSION_COOKIE, { path: '/' });
+export function clearSessionCookie(cookies: Cookies, secure: boolean) {
+	cookies.delete(SESSION_COOKIE, { path: '/', secure });
 }
 
-/** True when the browser reached us over HTTPS, directly or through a proxy (e.g. Tailscale). */
-export function isSecureRequest(request: Request, url: URL): boolean {
-	return url.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
+/**
+ * True when the browser reached us over HTTPS. Episodic itself only speaks HTTP, so HTTPS means a
+ * proxy in front (Tailscale Serve, a reverse proxy). Don't use `event.url.protocol` for this:
+ * without ORIGIN set, adapter-node assumes "https" for every request, which made browsers drop
+ * Secure cookies on plain http://<lan-ip> addresses.
+ */
+export function isSecureRequest(request: Request, appUrl = config().APP_URL): boolean {
+	const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0].trim();
+	if (forwardedProto) return forwardedProto === 'https';
+	const forwarded = request.headers.get('forwarded')?.match(/proto=(https?)/i)?.[1];
+	if (forwarded) return forwarded.toLowerCase() === 'https';
+	// A proxy that sets no header: trust APP_URL when the request is for that host.
+	if (appUrl?.startsWith('https://')) {
+		const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+		return host === new URL(appUrl).host;
+	}
+	return false;
 }
 
 // ---------- Login throttling ----------

@@ -1,0 +1,53 @@
+@import 'tailwindcss';
+
+@theme {
+	--font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+	--color-bg: var(--bg);
+	--color-surface: var(--surface);
+	--color-surface-2: var(--surface-2);
+	--color-border: var(--border);
+	--color-fg: var(--fg);
+	--color-muted: var(--muted);
+	--color-accent: var(--accent);
+	--color-accent-fg: var(--accent-fg);
+	--color-success: var(--success);
+	--color-danger: var(--danger);
+}
+
+/* Dark is the default: posters and backdrops look best on it. */
+:root {
+	--bg: #0b0b12;
+	--surface: #15151f;
+	--surface-2: #1f1f2c;
+	--border: #2a2a3a;
+	--fg: #f4f4f8;
+	--muted: #9a9ab0;
+	--accent: #8b7cff;
+	--accent-fg: #0b0b12;
+	--success: #3ddc97;
+	--danger: #ff5c7a;
+	color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+	--bg: #f7f7fb;
+	--surface: #ffffff;
+	--surface-2: #eeeef5;
+	--border: #dcdce6;
+	--fg: #14141c;
+	--muted: #5f5f73;
+	--accent: #5b4ae6;
+	--accent-fg: #ffffff;
+	--success: #12a36a;
+	--danger: #d6334f;
+	color-scheme: light;
+}
+
+html,
+body {
+	background: var(--bg);
+	color: var(--fg);
+	-webkit-tap-highlight-color: transparent;
+	text-rendering: optimizeLegibility;
+}

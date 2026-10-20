@@ -1,0 +1,12 @@
+node_modules
+/build
+/.svelte-kit
+/data
+/test-results
+/playwright-report
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+vite.config.*.timestamp-*

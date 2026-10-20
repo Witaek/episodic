@@ -1,0 +1,75 @@
+# Episodic: self-hosted tracker for TV shows, anime and movies.
+# Works with plain Docker Compose (values come from a .env file next to this one)
+# and with CasaOS (Custom Install → Import). See docs/deploy-casaos.md.
+name: episodic
+
+services:
+  episodic:
+    image: ghcr.io/witaek/episodic:latest
+    container_name: episodic
+    restart: unless-stopped
+    ports:
+      - '${PORT:-8787}:3000'
+    environment:
+      # Required. Free "API Read Access Token" from themoviedb.org, see docs/api-keys.md.
+      TMDB_ACCESS_TOKEN: ${TMDB_ACCESS_TOKEN:-}
+      # The main address you open Episodic from, e.g. https://casaos.your-tailnet.ts.net
+      APP_URL: ${APP_URL:-}
+      # Other addresses you use, comma separated, e.g. http://192.168.1.20:8787
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      TZ: ${TZ:-Etc/UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      METADATA_LANGUAGE: ${METADATA_LANGUAGE:-en-US}
+      METADATA_REGION: ${METADATA_REGION:-US}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ${DATA_DIR:-/DATA/AppData/episodic}:/data
+    x-casaos:
+      envs:
+        - container: TMDB_ACCESS_TOKEN
+          description:
+            en_us: Required. TMDB "API Read Access Token" (free).
+        - container: APP_URL
+          description:
+            en_us: Main URL you open Episodic from (e.g. your Tailscale HTTPS address).
+        - container: ALLOWED_ORIGINS
+          description:
+            en_us: Other URLs you use, comma separated (e.g. http://192.168.1.20:8787).
+        - container: TZ
+          description:
+            en_us: Your time zone, used for air dates (e.g. Europe/Paris).
+        - container: METADATA_LANGUAGE
+          description:
+            en_us: Language for titles and synopses (e.g. en-US, fr-FR).
+        - container: METADATA_REGION
+          description:
+            en_us: Country code for release dates and streaming info (e.g. US, FR).
+      ports:
+        - container: '3000'
+          description:
+            en_us: Web interface
+      volumes:
+        - container: /data
+          description:
+            en_us: Database, backups and cache
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: episodic
+  author: Witaek
+  developer: Witaek
+  category: Media
+  index: /
+  port_map: '8787'
+  icon: https://raw.githubusercontent.com/Witaek/episodic/main/static/icon.svg
+  title:
+    en_us: Episodic
+  tagline:
+    en_us: Track your TV shows, anime and movies
+  description:
+    en_us: >-
+      Self-hosted watch tracker. Search TV shows, anime and movies, mark episodes watched in one
+      tap, see what's next and when new episodes air.

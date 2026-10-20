@@ -11,6 +11,7 @@ import { users } from '$lib/server/db/schema';
 import { jobStatus } from '$lib/server/jobs/scheduler';
 import { mappingsAge } from '$lib/server/providers/anime-mapping';
 import { providers } from '$lib/server/providers';
+import { refreshOverview } from '$lib/server/services/refresh';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals }) => {
@@ -29,6 +30,7 @@ export const load: PageServerLoad = ({ locals }) => {
 		animeMappingsAgeDays: Number.isFinite(mappingsAge())
 			? Math.floor(mappingsAge() / 86_400_000)
 			: null,
+		refreshTiers: isAdmin ? refreshOverview() : null,
 		jobs: isAdmin
 			? jobStatus().map((job) => ({
 					name: job.name,

@@ -11,9 +11,9 @@
 
 ---
 
-> **Status: early development (phase 2 of 5).** Accounts, search, your library and one-tap
-> episode tracking work. Airing updates, the installable app and backups are next. See the
-> [roadmap](#roadmap).
+> **Status: early development (phase 3 of 5).** Accounts, search, library, one-tap tracking,
+> history, Upcoming and automatic airing updates work. The installable app and backups are next.
+> See the [roadmap](#roadmap).
 
 ## Features
 
@@ -67,7 +67,7 @@ Open `http://<your-server>:8787`.
 - [x] **Phase 0**: skeleton, database, Docker image (amd64 and arm64), docs
 - [x] **Phase 1**: catalog search (TMDB, AniList, TVmaze) and title pages
 - [x] **Phase 2**: accounts, library, one-tap tracking, Up Next
-- [ ] **Phase 3**: history, airing status, Upcoming, background refresh
+- [x] **Phase 3**: history, airing status, Upcoming, background refresh
 - [ ] **Phase 4**: installable PWA and UI polish
 - [ ] **Phase 5**: backups, export and restore, settings (**v1.0**)
 - [ ] Later: calendar, notifications, stats, integrations, books and manga

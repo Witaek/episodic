@@ -125,6 +125,8 @@ export const titles = sqliteTable(
 			.notNull()
 			.default({}),
 		refreshedAt: timestamp('refreshed_at').notNull(),
+		/** Last refresh that re-fetched every season (others only fetch recent seasons). */
+		fullRefreshedAt: timestamp('full_refreshed_at'),
 		createdAt: timestamp('created_at')
 			.notNull()
 			.$defaultFn(() => new Date())

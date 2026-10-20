@@ -14,6 +14,11 @@
 	let { item, busy = false, onwatch }: Props = $props();
 	const next = $derived(item.progress?.nextUp ?? null);
 	const remaining = $derived(item.progress ? item.progress.aired - item.progress.watched : 0);
+	// Aired in the last week: worth a "New" badge.
+	const isNew = $derived.by(() => {
+		const when = next?.airAt ?? next?.airDate;
+		return when ? Date.now() - new Date(when).getTime() < 7 * 24 * 60 * 60 * 1000 : false;
+	});
 </script>
 
 <a
@@ -27,6 +32,12 @@
 		class="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
 	/>
 	<div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5"></div>
+	{#if isNew}
+		<span
+			class="absolute top-3 left-3 rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold text-accent-fg shadow"
+			>New</span
+		>
+	{/if}
 
 	<div class="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4">
 		<div class="min-w-0 flex-1 text-white">

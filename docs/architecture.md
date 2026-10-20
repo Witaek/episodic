@@ -73,6 +73,30 @@ the types in `src/lib/catalog/types.ts`.
   every aired episode of an ended or canceled show watched → Completed; a Completed show with
   unwatched aired episodes → Watching; a watched movie → Completed.
 
+## Keeping metadata fresh
+
+The `refresh-titles` job runs every 20 minutes and refreshes up to 25 overdue titles per run
+(`services/refresh.ts`). Only titles in someone's library or history are refreshed.
+
+| Tier    | Which titles                                                  | Refreshed every |
+| ------- | ------------------------------------------------------------- | --------------- |
+| hot     | An episode or release between 3 days ago and 14 days from now | 6 hours         |
+| active  | Returning, in production, planned or upcoming                 | day             |
+| settled | Ended, canceled, released movies                              | 30 days         |
+
+- **Partial refreshes.** A refresh re-fetches the title and only the seasons that are new or among
+  the last two. Every 30 days a full refresh fetches all seasons. This keeps TMDB requests low even
+  for shows with many seasons. TMDB's `/changes` feed isn't used: it lists every change on TMDB
+  (tens of pages a day), which costs more than refreshing a household-sized library directly.
+- **Exact air times** (`services/airing.ts`): for anime, AniList's upcoming airing schedule is
+  mapped to TMDB episodes through `anime_mappings` (season + episode offset). For other shows,
+  TVmaze is looked up by TVDB/IMDb id, and the id is remembered. The times are stored in
+  `episodes.air_at` and kept across refreshes unless the episode's date changes.
+- **New episodes.** After a refresh, episodes that aired since the previous refresh re-open
+  _Completed_ entries as _Watching_.
+- A failing title is pushed back to the end of the queue, so one broken title doesn't block the
+  others. The outcome of each run is under **Settings → Background jobs**.
+
 ## Metadata sources
 
 | Provider    | Used for                                                                                 | Rate limit used                  |

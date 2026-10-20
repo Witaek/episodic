@@ -2,7 +2,7 @@ import { error, redirect } from '@sveltejs/kit';
 import type { Season, TitleKind } from '$lib/catalog/types';
 import { NotConfiguredError } from '$lib/server/providers';
 import { getUserTitleState } from '$lib/server/services/library';
-import { findTitle } from '$lib/server/services/titles';
+import { findTitle, titleEpisodes } from '$lib/server/services/titles';
 import {
 	defaultSeasonNumber,
 	getSeason,
@@ -31,7 +31,18 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	if ('redirect' in lookup) redirect(307, lookup.redirect);
 	const { title } = lookup;
 	const user = locals.user!;
-	const state = getUserTitleState(user.id, findTitle(kind, params.id), user.prefs);
+	const stored = findTitle(kind, params.id);
+	const state = getUserTitleState(user.id, stored, user.prefs);
+
+	// Exact air times learned by the background refresh (AniList/TVmaze), keyed "season-number".
+	const airTimes: Record<string, string> = {};
+	if (stored) {
+		for (const e of titleEpisodes(stored.id)) {
+			if (e.airAt) airTimes[`${e.seasonNumber}-${e.number}`] = e.airAt;
+		}
+	}
+	const next = title.nextEpisode;
+	if (next && !next.airAt) next.airAt = airTimes[`${next.seasonNumber}-${next.number}`] ?? null;
 
 	let seasonNumber: number | null = null;
 	let season: Promise<Season | null> = Promise.resolve(null);
@@ -56,5 +67,13 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	}
 
 	// `season` is streamed: the page renders immediately and the episode list fills in.
-	return { setupNeeded: false as const, title, seasonNumber, season, state };
+	return {
+		setupNeeded: false as const,
+		title,
+		seasonNumber,
+		season,
+		state,
+		airTimes,
+		refreshedAt: stored?.refreshedAt.toISOString() ?? null
+	};
 };

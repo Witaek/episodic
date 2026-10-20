@@ -85,3 +85,50 @@ export interface LibraryItem {
 	lastActivityAt: string | null;
 	progress: ProgressSummary | null;
 }
+
+export interface HistoryItem {
+	eventId: number;
+	occurredAt: string;
+	isRepeat: boolean;
+	title: {
+		id: number;
+		name: string;
+		href: string;
+		mediaType: MediaTypeId;
+		isAnime: boolean;
+		poster: Image | null;
+	};
+	episode: {
+		seasonNumber: number;
+		number: number;
+		name: string | null;
+		still: Image | null;
+		runtime: number | null;
+	} | null;
+	runtime: number | null;
+}
+
+export interface UpcomingItem {
+	titleId: number;
+	href: string;
+	name: string;
+	mediaType: MediaTypeId;
+	isAnime: boolean;
+	poster: Image | null;
+	backdrop: Image | null;
+	status: LibraryStatus;
+	/** Null for a movie release. */
+	episode: EpisodeBrief | null;
+	/** Local calendar date "YYYY-MM-DD" (from airAt when known). */
+	date: string;
+	airAt: string | null;
+}
+
+export interface AnnouncedSeason {
+	titleId: number;
+	href: string;
+	name: string;
+	poster: Image | null;
+	seasonNumber: number;
+	airDate: string | null;
+}

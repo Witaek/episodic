@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { Search } from '@lucide/svelte';
+	import { Search, Settings } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import type { SearchResult } from '$lib/catalog/types';
+	import AiringCard from '$lib/components/AiringCard.svelte';
 	import Img from '$lib/components/Img.svelte';
 	import MediaRow from '$lib/components/MediaRow.svelte';
 	import SetupNotice from '$lib/components/SetupNotice.svelte';
@@ -98,11 +99,11 @@
 			<h1 class="text-2xl font-bold tracking-tight md:text-3xl">{data.displayName}</h1>
 		</div>
 		<a
-			href="/search"
+			href="/settings"
 			class="grid size-11 place-items-center rounded-full bg-surface-2 text-muted transition hover:text-fg lg:hidden"
-			aria-label="Search"
+			aria-label="Settings"
 		>
-			<Search class="size-5" />
+			<Settings class="size-5" />
 		</a>
 	</header>
 
@@ -138,6 +139,22 @@
 					<Search class="size-4" /> Find something to watch
 				</a>
 			</div>
+		</section>
+	{/if}
+
+	{#if data.airingSoon.length}
+		<section class="space-y-3">
+			<header class="flex items-baseline justify-between px-4 md:px-8">
+				<h2 class="text-lg font-semibold tracking-tight md:text-xl">Airing soon</h2>
+				<a href="/upcoming" class="text-sm text-muted hover:text-fg">See all</a>
+			</header>
+			<ul
+				class="flex [scrollbar-width:none] gap-3 overflow-x-auto px-4 pb-1 md:px-8 [&::-webkit-scrollbar]:hidden"
+			>
+				{#each data.airingSoon as item (`${item.titleId}-${item.episode?.id ?? 'movie'}`)}
+					<li class="shrink-0"><AiringCard {item} /></li>
+				{/each}
+			</ul>
 		</section>
 	{/if}
 

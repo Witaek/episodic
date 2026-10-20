@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { ProviderId, Season, TitleDetails, TitleKind } from '$lib/catalog/types';
 import { getDb } from '../db/client';
 import { episodes, seasons, titles } from '../db/schema';
@@ -38,32 +38,57 @@ export async function ensureTitle(kind: TitleKind, externalId: string): Promise<
 	return findTitle(kind, externalId) ?? (await syncTitle(kind, externalId));
 }
 
-/** Fetches a title (and all its seasons) from its provider and stores it. */
+export interface SyncOptions {
+	/** Bypass the response cache. */
+	fresh?: boolean;
+	/**
+	 * 'all' fetches every season. 'recent' only fetches seasons that are new or among the last two
+	 * regular seasons, which is where changes happen; older seasons keep their stored episodes.
+	 */
+	seasons?: 'all' | 'recent';
+}
+
+/** Fetches a title (and its seasons) from its provider and stores it. */
 export async function syncTitle(
 	kind: TitleKind,
 	externalId: string,
-	{ fresh = false }: { fresh?: boolean } = {}
+	{ fresh = false, seasons: which = 'all' }: SyncOptions = {}
 ): Promise<TitleRow> {
 	const lookup = await getTitle(kind, externalId, undefined, { fresh });
-	if ('redirect' in lookup)
+	if ('redirect' in lookup) {
 		throw new Error(`${kind}/${externalId} is tracked as ${lookup.redirect}`);
+	}
 	const details = lookup.title;
 
-	const fetchedSeasons: Season[] =
-		details.mediaType === 'movie'
-			? []
-			: await Promise.all(
-					details.seasons.map((s) => getSeason(kind, externalId, s.number, undefined, { fresh }))
-				);
+	let wanted = details.mediaType === 'movie' ? [] : details.seasons.map((s) => s.number);
+	if (which === 'recent' && wanted.length > 0) {
+		const existing = findTitle(kind, externalId);
+		const stored = new Set(
+			existing
+				? getDb()
+						.select({ number: seasons.number })
+						.from(seasons)
+						.where(eq(seasons.titleId, existing.id))
+						.all()
+						.map((s) => s.number)
+				: []
+		);
+		const latest = Math.max(...wanted);
+		wanted = wanted.filter((n) => !stored.has(n) || (n > 0 && n >= latest - 1));
+	}
 
-	return storeTitle(kind, externalId, details, fetchedSeasons);
+	const fetchedSeasons: Season[] = await Promise.all(
+		wanted.map((n) => getSeason(kind, externalId, n, undefined, { fresh }))
+	);
+	return storeTitle(kind, externalId, details, fetchedSeasons, { full: which === 'all' });
 }
 
 export function storeTitle(
 	kind: TitleKind,
 	externalId: string,
 	details: TitleDetails,
-	fetchedSeasons: Season[]
+	fetchedSeasons: Season[],
+	{ full = true }: { full?: boolean } = {}
 ): TitleRow {
 	const db = getDb();
 	const values = {
@@ -84,17 +109,21 @@ export function storeTitle(
 		endDate: details.endDate,
 		runtime: details.runtime,
 		rating: details.rating,
-		externalIds: details.externalIds,
-		refreshedAt: new Date()
+		refreshedAt: new Date(),
+		...(full ? { fullRefreshedAt: new Date() } : {})
 	};
 
 	return db.transaction((tx) => {
 		const row = tx
 			.insert(titles)
-			.values(values)
+			.values({ ...values, externalIds: details.externalIds })
 			.onConflictDoUpdate({
 				target: [titles.provider, titles.kind, titles.externalId],
-				set: values
+				// Keep ids learned later (e.g. TVmaze) next to the provider's own.
+				set: {
+					...values,
+					externalIds: sql`json_patch(${titles.externalIds}, ${JSON.stringify(details.externalIds)})`
+				}
 			})
 			.returning()
 			.get();
@@ -131,7 +160,13 @@ export function storeTitle(
 					.values(episodeValues)
 					.onConflictDoUpdate({
 						target: [episodes.titleId, episodes.seasonNumber, episodes.number],
-						set: episodeValues
+						set: {
+							...episodeValues,
+							// Exact air times come from AniList/TVmaze enrichment; keep them unless the
+							// provider sends one or the episode moved to another day.
+							airAt: sql`case when excluded.air_date is ${episodes.airDate}
+								then coalesce(excluded.air_at, ${episodes.airAt}) else excluded.air_at end`
+						}
 					})
 					.run();
 			}

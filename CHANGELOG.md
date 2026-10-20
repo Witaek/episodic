@@ -7,6 +7,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- History: a day-by-day timeline of everything you watched, with filters, "change date" and
+  "remove", and paging.
+- Upcoming: episodes and releases for the next 30 days, grouped by day, with exact times when known,
+  premiere badges, and a "Coming later" list of announced seasons.
+- Home: an "Airing soon" row and a "New" badge on Up Next cards for episodes from the last week.
+- Background refresh of library titles in tiers (every 6 hours when airing soon, daily for running
+  shows, monthly for finished ones), fetching only recent seasons between monthly full refreshes.
+- Exact air times from AniList (anime) and TVmaze (other shows), kept across metadata refreshes.
+- Completed shows go back to Watching when a new episode airs.
+- "Refresh now" on title pages, and refresh statistics under Settings → Background jobs.
+- History in the mobile tab bar; Settings moves to the button on the home screen.
 - Accounts: first-run setup page (or `ADMIN_USERNAME`/`ADMIN_PASSWORD`), sign-in with throttling,
   30-day sessions, password change, "sign out other devices".
 - Admin Users screen: create accounts, reset passwords, disable, change role, delete.

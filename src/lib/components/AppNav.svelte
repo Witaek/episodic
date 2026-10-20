@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { CalendarClock, House, Library, Search, Settings } from '@lucide/svelte';
+	import { CalendarClock, History, House, Library, Search, Settings } from '@lucide/svelte';
 
 	const items = [
 		{ href: '/', label: 'Home', icon: House },
 		{ href: '/search', label: 'Search', icon: Search },
 		{ href: '/library', label: 'Library', icon: Library },
 		{ href: '/upcoming', label: 'Upcoming', icon: CalendarClock },
-		{ href: '/settings', label: 'Settings', icon: Settings }
+		{ href: '/history', label: 'History', icon: History }
 	];
+	// Settings lives in the sidebar on desktop and behind the avatar on the home screen on phones.
+	const sidebarItems = [...items, { href: '/settings', label: 'Settings', icon: Settings }];
 
 	const isActive = (href: string) =>
 		href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
@@ -24,7 +26,7 @@
 		<span class="text-lg font-semibold tracking-tight">Episodic</span>
 	</a>
 	<ul class="space-y-1">
-		{#each items as item (item.href)}
+		{#each sidebarItems as item (item.href)}
 			{@const active = isActive(item.href)}
 			<li>
 				<a

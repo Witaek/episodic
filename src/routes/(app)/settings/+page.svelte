@@ -185,6 +185,14 @@
 
 	{#if data.jobs.length}
 		<SettingsSection title="Background jobs">
+			{#if data.refreshTiers}
+				<p class="border-b border-border px-5 py-3.5 text-sm text-muted">
+					Tracking {data.refreshTiers.hot + data.refreshTiers.active + data.refreshTiers.settled} titles:
+					{data.refreshTiers.hot} airing soon (updated every 6 h), {data.refreshTiers.active} running
+					(daily),
+					{data.refreshTiers.settled} finished (monthly).
+				</p>
+			{/if}
 			<ul class="divide-y divide-border">
 				{#each data.jobs as job (job.name)}
 					<li class="px-5 py-3.5">

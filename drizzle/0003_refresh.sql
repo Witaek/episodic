@@ -1,0 +1,1 @@
+ALTER TABLE `titles` ADD `full_refreshed_at` integer;

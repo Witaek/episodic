@@ -1,13 +1,17 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import {
 		ArrowLeft,
 		Check,
 		CheckCheck,
 		ExternalLink,
 		Play,
+		RefreshCw,
 		RotateCcw,
 		Star
 	} from '@lucide/svelte';
+	import { toast } from 'svelte-sonner';
+	import type { Episode } from '$lib/catalog/types';
 	import { airingSummary } from '$lib/catalog/airing';
 	import EpisodeRow from '$lib/components/EpisodeRow.svelte';
 	import Img from '$lib/components/Img.svelte';
@@ -15,7 +19,7 @@
 	import PersonCard from '$lib/components/PersonCard.svelte';
 	import SetupNotice from '$lib/components/SetupNotice.svelte';
 	import StatusChip from '$lib/components/StatusChip.svelte';
-	import { formatDate, formatRuntime, year } from '$lib/format';
+	import { formatDate, formatDateTime, formatRuntime, year } from '$lib/format';
 	import LibraryStatusMenu from '$lib/components/LibraryStatusMenu.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import WatchDateDialog from '$lib/components/WatchDateDialog.svelte';
@@ -55,6 +59,36 @@
 		target: null,
 		rewatch: false
 	});
+	const airTimes = $derived(data.setupNeeded ? {} : data.airTimes);
+	function withAirTime(episode: Episode): Episode {
+		return episode.airAt
+			? episode
+			: { ...episode, airAt: airTimes[`${episode.seasonNumber}-${episode.number}`] ?? null };
+	}
+
+	let refreshing = $state(false);
+	async function refreshMetadata() {
+		if (!title) return;
+		refreshing = true;
+		try {
+			const response = await fetch(`/api/titles/${title.ref.kind}/${title.ref.id}/refresh`, {
+				method: 'POST'
+			});
+			const result = await response.json();
+			if (!response.ok) throw new Error(result.error ?? 'Refresh failed');
+			if (result.refreshed) {
+				await invalidateAll();
+				toast.success('Updated from ' + sourceName);
+			} else {
+				toast('Already up to date', { description: 'Refreshed less than 5 minutes ago.' });
+			}
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : 'Refresh failed');
+		} finally {
+			refreshing = false;
+		}
+	}
+
 	function pickDate(target: WatchTarget, label: string, rewatch = false) {
 		dateDialog = { open: true, label, target, rewatch };
 	}
@@ -396,7 +430,7 @@
 									number: episode.number
 								}}
 								<EpisodeRow
-									{episode}
+									episode={withAirTime(episode)}
 									{showStill}
 									plays={tracker?.plays(episode.seasonNumber, episode.number)}
 									actions={tracker
@@ -458,6 +492,19 @@
 						</div>
 					{/each}
 				</dl>
+				{#if !data.setupNeeded && data.refreshedAt}
+					<p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+						Last updated {formatDateTime(data.refreshedAt)}
+						<button
+							type="button"
+							onclick={refreshMetadata}
+							disabled={refreshing}
+							class="inline-flex items-center gap-1 font-medium text-accent hover:underline disabled:opacity-50"
+						>
+							<RefreshCw class="size-3 {refreshing ? 'animate-spin' : ''}" /> Refresh now
+						</button>
+					</p>
+				{/if}
 			</section>
 		{/if}
 	</div>

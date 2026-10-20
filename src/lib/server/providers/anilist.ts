@@ -394,3 +394,29 @@ export const anilist = {
 		};
 	}
 } satisfies MetadataProvider;
+
+const SCHEDULE_QUERY = `query ($ids: [Int]) {
+	Page(perPage: 50) {
+		media(id_in: $ids, type: ANIME) {
+			id
+			status
+			airingSchedule(notYetAired: true, perPage: 50) { nodes { airingAt episode } }
+		}
+	}
+}`;
+
+/** Upcoming episode air times (unix seconds) for up to 50 AniList ids, in one request. */
+export async function upcomingAiringSchedules(
+	ids: number[]
+): Promise<Map<number, { episode: number; airingAt: number }[]>> {
+	const result = new Map<number, { episode: number; airingAt: number }[]>();
+	for (let i = 0; i < ids.length; i += 50) {
+		const data = await query<{
+			Page: {
+				media: { id: number; airingSchedule: { nodes: { airingAt: number; episode: number }[] } }[];
+			};
+		}>(SCHEDULE_QUERY, { ids: ids.slice(i, i + 50) });
+		for (const media of data.Page.media) result.set(media.id, media.airingSchedule.nodes);
+	}
+	return result;
+}

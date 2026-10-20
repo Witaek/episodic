@@ -5,10 +5,12 @@
 	interface Props {
 		open: boolean;
 		title: string;
+		/** Pre-filled date; defaults to now. */
+		initial?: Date | null;
 		onconfirm: (date: Date) => void;
 	}
 
-	let { open = $bindable(), title, onconfirm }: Props = $props();
+	let { open = $bindable(), title, initial = null, onconfirm }: Props = $props();
 
 	const toLocalInput = (date: Date) => {
 		const pad = (n: number) => String(n).padStart(2, '0');
@@ -17,7 +19,7 @@
 
 	let value = $state('');
 	$effect(() => {
-		if (open) value = toLocalInput(new Date());
+		if (open) value = toLocalInput(initial ?? new Date());
 	});
 	const max = $derived(toLocalInput(new Date()));
 </script>

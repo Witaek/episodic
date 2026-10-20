@@ -6,11 +6,17 @@ import {
 	validatePassword,
 	verifyPassword
 } from '$lib/server/auth';
+import { config } from '$lib/server/config';
 import { getDb, isDatabaseHealthy } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { jobStatus } from '$lib/server/jobs/scheduler';
 import { mappingsAge } from '$lib/server/providers/anime-mapping';
 import { providers } from '$lib/server/providers';
+import {
+	disableCalendarFeed,
+	getCalendarToken,
+	resetCalendarToken
+} from '$lib/server/services/calendar-feed';
 import { refreshOverview } from '$lib/server/services/refresh';
 import { THEME_COOKIE, parseTheme } from '$lib/theme';
 import type { Actions, PageServerLoad } from './$types';
@@ -21,6 +27,8 @@ export const load: PageServerLoad = ({ locals }) => {
 		version: __APP_VERSION__,
 		user: locals.user!,
 		isAdmin,
+		calendarToken: getCalendarToken(locals.user!.id),
+		appUrl: config().APP_URL ?? null,
 		database: isDatabaseHealthy(),
 		providers: providers.map((p) => ({
 			id: p.id,
@@ -62,7 +70,8 @@ export const actions: Actions = {
 		const prefs = {
 			...locals.user!.prefs,
 			includeSpecials: form.get('includeSpecials') === 'on',
-			autoStatus: form.get('autoStatus') === 'on'
+			autoStatus: form.get('autoStatus') === 'on',
+			notifyWatchlist: form.get('notifyWatchlist') === 'on'
 		};
 		getDb().update(users).set({ prefs }).where(eq(users.id, locals.user!.id)).run();
 		return { preferences: { success: true, error: null } };
@@ -100,6 +109,16 @@ export const actions: Actions = {
 			maxAge: 60 * 60 * 24 * 365 * 5
 		});
 		return { theme: { success: true, error: null } };
+	},
+
+	calendarReset: ({ locals }) => {
+		resetCalendarToken(locals.user!.id);
+		return { calendar: { success: true, error: null } };
+	},
+
+	calendarDisable: ({ locals }) => {
+		disableCalendarFeed(locals.user!.id);
+		return { calendar: { success: true, error: null } };
 	},
 
 	signOutOthers: ({ locals }) => {

@@ -122,6 +122,8 @@ export interface UpcomingItem {
 	/** Local calendar date "YYYY-MM-DD" (from airAt when known). */
 	date: string;
 	airAt: string | null;
+	/** Already watched (movies: completed). */
+	watched?: boolean;
 }
 
 export interface AnnouncedSeason {

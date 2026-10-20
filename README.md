@@ -27,8 +27,11 @@
 - **Your data stays yours**: one SQLite file, nightly backups, and JSON export and restore for each
   person.
 
-Later: calendar and iCal feed, notifications, stats, where-to-watch, Jellyfin/Plex auto-tracking,
-and books and manga.
+- **Calendar**: a month view of what's airing, plus an iCal feed for your phone's calendar.
+- **Notifications** when new episodes come out, on your phone (Web Push), ntfy or Discord.
+- **Stats**: watch time, streaks, monthly chart, top genres and shows.
+
+Later: where-to-watch, Jellyfin/Plex auto-tracking, and books and manga.
 
 ## Quick start
 
@@ -68,7 +71,8 @@ Open `http://<your-server>:8787`.
 - [x] **Phase 3**: history, airing status, Upcoming, background refresh
 - [x] **Phase 4**: installable PWA and UI polish
 - [x] **Phase 5**: backups, export and restore, settings (**v1.0**)
-- [ ] Later: calendar, notifications, stats, integrations, books and manga
+- [x] **Phase 6**: calendar view, iCal feed, notifications, stats
+- [ ] Later: where to watch, spoiler mode, Jellyfin/Plex/Trakt integrations, books and manga
 
 ## Credits
 

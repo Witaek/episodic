@@ -89,6 +89,20 @@ the types in `src/lib/catalog/types.ts`.
 - Page changes use the View Transitions API. The tapped poster morphs into the title page poster
   (`src/lib/transitions.ts`). This is skipped when the user prefers reduced motion.
 
+## Calendar, notifications and stats
+
+- `services/upcoming.ts` → `scheduleBetween(user, from, to)` is the one query behind the Upcoming
+  list, the month calendar and the iCal feed (`services/calendar-feed.ts`, `server/ics.ts`).
+- `/calendar/<token>.ics` is outside sign-in: `users.calendar_token` is the credential and can be
+  reset or turned off.
+- `services/notifications.ts` keeps destinations in `notification_targets` (Web Push subscription,
+  ntfy topic or Discord webhook) and remembers delivered episodes in `notifications_sent`. The
+  `notify-new-episodes` job runs every 10 minutes. The Web Push (VAPID) key pair is generated on
+  first use and stored in `app_meta`. The service worker shows push messages and opens the show
+  when one is tapped.
+- `services/stats.ts` computes everything from `activity_events` on request. Runtimes come from
+  the episode, then the title, then a default per type.
+
 ## Keeping metadata fresh
 
 The `refresh-titles` job runs every 20 minutes and refreshes up to 25 overdue titles per run

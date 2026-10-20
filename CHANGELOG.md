@@ -5,6 +5,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Calendar: a month view on the Upcoming page (List | Calendar), with watched episodes marked.
+- iCal feed: a private, resettable calendar link per person (30 days back, 90 ahead), with exact
+  times when known.
+- New-episode notifications every 10 minutes: Web Push to installed apps and browsers, ntfy topics
+  and Discord webhooks, with test buttons. Grouped per show, never repeated, no backlog flood.
+- Preference to also be notified for shows on the watchlist.
+- Stats: time watched, streaks, episodes/movies/titles/completed, hours per month (TV shows, anime,
+  movies) with a table view, top genres, most-watched titles, this year or all time.
+- Guide: notifications and calendar.
+
 ## [1.0.0] - 2026-10-20
 
 First release: search, library, one-tap tracking, Up Next, history, Upcoming, airing updates,

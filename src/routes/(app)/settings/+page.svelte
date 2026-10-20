@@ -3,7 +3,9 @@
 	import { invalidateAll } from '$app/navigation';
 	import { ChevronRight, DatabaseBackup, LogOut, Users } from '@lucide/svelte';
 	import Button from '$lib/components/Button.svelte';
+	import CalendarFeedSection from '$lib/components/CalendarFeedSection.svelte';
 	import DataSection from '$lib/components/DataSection.svelte';
+	import NotificationsSection from '$lib/components/NotificationsSection.svelte';
 	import FormField from '$lib/components/FormField.svelte';
 	import InstallApp from '$lib/components/InstallApp.svelte';
 	import SegmentedControl from '$lib/components/SegmentedControl.svelte';
@@ -186,7 +188,30 @@
 					class="mt-1 size-5 accent-[var(--accent)]"
 				/>
 			</label>
+			<label class="mt-4 flex items-start justify-between gap-4 border-t border-border pt-4">
+				<span>
+					<span class="block font-medium">Notify for my watchlist too</span>
+					<span class="block text-sm text-muted">
+						New-episode notifications also cover shows you haven't started yet.
+					</span>
+				</span>
+				<input
+					type="checkbox"
+					name="notifyWatchlist"
+					checked={data.user.prefs.notifyWatchlist ?? false}
+					onchange={(event) => event.currentTarget.form?.requestSubmit()}
+					class="mt-1 size-5 accent-[var(--accent)]"
+				/>
+			</label>
 		</form>
+	</SettingsSection>
+
+	<SettingsSection title="Notifications">
+		<NotificationsSection />
+	</SettingsSection>
+
+	<SettingsSection title="Calendar feed">
+		<CalendarFeedSection token={data.calendarToken} appUrl={data.appUrl} />
 	</SettingsSection>
 
 	<SettingsSection title="Your data">

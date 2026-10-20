@@ -1,6 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { CalendarClock, History, House, Library, Search, Settings } from '@lucide/svelte';
+	import {
+		CalendarClock,
+		ChartColumn,
+		History,
+		House,
+		Library,
+		Search,
+		Settings
+	} from '@lucide/svelte';
 
 	const items = [
 		{ href: '/', label: 'Home', icon: House },
@@ -10,7 +18,11 @@
 		{ href: '/history', label: 'History', icon: History }
 	];
 	// Settings lives in the sidebar on desktop and behind the avatar on the home screen on phones.
-	const sidebarItems = [...items, { href: '/settings', label: 'Settings', icon: Settings }];
+	const sidebarItems = [
+		...items,
+		{ href: '/stats', label: 'Stats', icon: ChartColumn },
+		{ href: '/settings', label: 'Settings', icon: Settings }
+	];
 
 	const isActive = (href: string) =>
 		href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);

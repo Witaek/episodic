@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { History, LoaderCircle } from '@lucide/svelte';
+	import { ChartColumn, History, LoaderCircle } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import Button from '$lib/components/Button.svelte';
 	import HistoryRow from '$lib/components/HistoryRow.svelte';
@@ -76,7 +76,15 @@
 <div
 	class="sticky top-0 z-20 space-y-3 border-b border-border/60 bg-bg/85 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3 backdrop-blur-xl md:px-8"
 >
-	<h1 class="text-2xl font-bold tracking-tight">History</h1>
+	<div class="flex items-center justify-between gap-3">
+		<h1 class="text-2xl font-bold tracking-tight">History</h1>
+		<a
+			href="/stats"
+			class="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 text-sm font-medium text-muted hover:text-fg"
+		>
+			<ChartColumn class="size-4" /> Stats
+		</a>
+	</div>
 	<nav class="flex gap-4 text-sm" aria-label="Type">
 		{#each types as type (type.id)}
 			<a

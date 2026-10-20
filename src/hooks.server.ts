@@ -39,7 +39,8 @@ export const init: ServerInit = async () => {
 };
 
 /** Reachable without signing in. */
-const PUBLIC_PATHS = ['/login', '/setup', '/api/health'];
+// /calendar/<token>.ics is authenticated by its secret token.
+const PUBLIC_PATHS = ['/login', '/setup', '/api/health', '/calendar'];
 
 // Once an account exists it never goes back to zero (the last admin can't be deleted),
 // so the first-run check only hits the database until setup is done.

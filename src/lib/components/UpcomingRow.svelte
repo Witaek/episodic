@@ -53,8 +53,12 @@
 				</p>
 			{/if}
 		</div>
-		<span class="shrink-0 text-right text-sm tabular-nums {aired ? 'text-success' : 'text-muted'}">
-			{aired ? 'Aired' : (time ?? '')}
+		<span
+			class="shrink-0 text-right text-sm tabular-nums {aired || item.watched
+				? 'text-success'
+				: 'text-muted'}"
+		>
+			{item.watched ? 'Watched' : aired ? 'Aired' : (time ?? '')}
 		</span>
 	</a>
 </li>

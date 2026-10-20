@@ -1,4 +1,12 @@
-import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+	index,
+	integer,
+	primaryKey,
+	real,
+	sqliteTable,
+	text,
+	uniqueIndex
+} from 'drizzle-orm/sqlite-core';
 import type { Image, MediaTypeId, ProviderId, ShowStatus, TitleKind } from '$lib/catalog/types';
 import type { LibraryStatus } from '$lib/media-types/types';
 
@@ -65,6 +73,8 @@ export interface UserPrefs {
 	includeSpecials?: boolean;
 	/** Move titles between statuses automatically (default on). */
 	autoStatus?: boolean;
+	/** Also notify for shows on the watchlist, not only ones being watched. */
+	notifyWatchlist?: boolean;
 }
 
 export const users = sqliteTable('users', {
@@ -78,6 +88,8 @@ export const users = sqliteTable('users', {
 		.default('user'),
 	disabled: integer('disabled', { mode: 'boolean' }).notNull().default(false),
 	prefs: text('prefs', { mode: 'json' }).$type<UserPrefs>().notNull().default({}),
+	/** Secret for the iCal feed URL (calendar apps can't sign in). Null = feed off. */
+	calendarToken: text('calendar_token').unique(),
 	createdAt: timestamp('created_at')
 		.notNull()
 		.$defaultFn(() => new Date())
@@ -252,3 +264,52 @@ export const importJobs = sqliteTable('import_jobs', {
 		.$defaultFn(() => new Date()),
 	finishedAt: timestamp('finished_at')
 });
+
+// ---------- Notifications ----------
+
+export type NotificationTargetType = 'webpush' | 'ntfy' | 'discord';
+
+export interface NotificationTargetConfig {
+	/** Web Push subscription (from PushManager.subscribe). */
+	subscription?: { endpoint: string; keys: { p256dh: string; auth: string } };
+	/** ntfy topic URL or Discord webhook URL. */
+	url?: string;
+	/** ntfy access token, for protected topics. */
+	token?: string;
+}
+
+/** Where a user's notifications go: a browser/device (Web Push), an ntfy topic, a Discord webhook. */
+export const notificationTargets = sqliteTable(
+	'notification_targets',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		userId: integer('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		type: text('type').$type<NotificationTargetType>().notNull(),
+		label: text('label').notNull(),
+		config: text('config', { mode: 'json' }).$type<NotificationTargetConfig>().notNull(),
+		enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+		lastError: text('last_error'),
+		lastSentAt: timestamp('last_sent_at'),
+		createdAt: timestamp('created_at')
+			.notNull()
+			.$defaultFn(() => new Date())
+	},
+	(t) => [index('notification_targets_user_idx').on(t.userId)]
+);
+
+/** Episodes a user was already notified about, so nothing is sent twice. */
+export const notificationsSent = sqliteTable(
+	'notifications_sent',
+	{
+		userId: integer('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		episodeId: integer('episode_id')
+			.notNull()
+			.references(() => episodes.id, { onDelete: 'cascade' }),
+		sentAt: timestamp('sent_at').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.episodeId] })]
+);

@@ -109,3 +109,48 @@ sw.addEventListener('fetch', (event) => {
 sw.addEventListener('message', (event) => {
 	if (event.data === 'clear-user-data') event.waitUntil(caches.delete(PAGES));
 });
+
+// ---------- Push notifications ----------
+
+interface PushMessage {
+	title: string;
+	body: string;
+	path: string;
+	tag?: string;
+}
+
+sw.addEventListener('push', (event) => {
+	let message: PushMessage;
+	try {
+		message = event.data?.json() as PushMessage;
+	} catch {
+		message = { title: 'Episodic', body: event.data?.text() ?? '', path: '/' };
+	}
+	event.waitUntil(
+		sw.registration.showNotification(message.title, {
+			body: message.body,
+			tag: message.tag,
+			icon: '/icons/icon-192.png',
+			badge: '/icons/favicon-32.png',
+			data: { path: message.path }
+		})
+	);
+});
+
+sw.addEventListener('notificationclick', (event) => {
+	event.notification.close();
+	const path = (event.notification.data as { path?: string } | null)?.path ?? '/';
+	const url = new URL(path, sw.location.origin).href;
+	event.waitUntil(
+		(async () => {
+			const windows = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true });
+			const open = windows.find((w) => new URL(w.url).origin === sw.location.origin);
+			if (open) {
+				await open.focus();
+				await open.navigate(url).catch(() => {});
+			} else {
+				await sw.clients.openWindow(url);
+			}
+		})()
+	);
+});

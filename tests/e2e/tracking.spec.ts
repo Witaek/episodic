@@ -78,3 +78,39 @@ test('export your data and make a backup', async ({ page }) => {
 	const response = await page.request.get((await link.getAttribute('href'))!);
 	expect(response.headers()['content-type']).toBe('application/vnd.sqlite3');
 });
+
+test('calendar view, iCal feed and stats', async ({ page }) => {
+	await signIn(page);
+	// Make sure there is something to show (the first test may have run in another project).
+	await page.request.put(`/api/titles/anime/${ANIME_ID}/library`, {
+		data: { status: 'in_progress' }
+	});
+	await page.request.post(`/api/titles/anime/${ANIME_ID}/watch`, {
+		data: { target: { type: 'episode', season: 1, number: 1 } }
+	});
+
+	await page.goto('/upcoming?view=calendar');
+	await expect(page.getByRole('link', { name: 'Calendar' })).toHaveAttribute(
+		'aria-current',
+		'page'
+	);
+	await expect(
+		page
+			.getByRole('button', { name: 'Next month' })
+			.or(page.getByRole('link', { name: 'Next month' }))
+	).toBeVisible();
+
+	await page.goto('/settings');
+	const field = page.getByRole('textbox', { name: 'Calendar feed link' });
+	// The desktop and phone runs share one account: the link may already exist.
+	if (!(await field.isVisible()))
+		await page.getByRole('button', { name: 'Create calendar link' }).click();
+	const link = await field.inputValue();
+	const ics = await page.request.get(new URL(link).pathname);
+	expect(ics.headers()['content-type']).toContain('text/calendar');
+	expect(await ics.text()).toContain('BEGIN:VCALENDAR');
+
+	await page.goto('/stats');
+	await expect(page.getByText('Time watched')).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Most watched' })).toBeVisible();
+});

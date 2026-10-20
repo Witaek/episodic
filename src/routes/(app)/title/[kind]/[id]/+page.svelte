@@ -407,6 +407,15 @@
 						<CheckCheck class="size-4" /> Up to date
 					</span>
 				{/if}
+				{#if !whole && title.seasons.length > 0 && (!progress || progress.watched < progress.aired)}
+					<button
+						type="button"
+						onclick={() => tracker.watch({ type: 'all' })}
+						class="inline-flex items-center gap-2 rounded-full bg-surface-2 px-4 py-2 text-sm font-semibold transition hover:bg-border active:scale-95"
+					>
+						<CheckCheck class="size-4" /> Mark all watched
+					</button>
+				{/if}
 				<LibraryStatusMenu
 					status={tracker.state.status}
 					labels={definition.statusLabels}

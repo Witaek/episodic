@@ -41,9 +41,21 @@ export class TitleTracker {
 		this.state.status = status;
 		try {
 			this.state = (await setLibraryStatus(this.ref, status)).state;
-			toast.success(
-				previous ? `Moved to ${this.statusLabels[status]}` : `Added to ${this.statusLabels[status]}`
-			);
+			const label = previous
+				? `Moved to ${this.statusLabels[status]}`
+				: `Added to ${this.statusLabels[status]}`;
+			// Completing a show doesn't mark its episodes: offer to, if some aired ones are unwatched.
+			const progress = this.state.progress;
+			const missing = progress ? progress.aired - progress.watched : 0;
+			if (status === 'completed' && missing > 0) {
+				toast.success(label, {
+					description: `${missing} aired episode${missing === 1 ? ' is' : 's are'} not marked as watched.`,
+					duration: 10_000,
+					action: { label: 'Mark all watched', onClick: () => void this.watch({ type: 'all' }) }
+				});
+			} else {
+				toast.success(label);
+			}
 		} catch {
 			this.state.status = previous;
 		}

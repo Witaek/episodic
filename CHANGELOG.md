@@ -5,6 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-21
+
+### Added
+
+- **Mark all watched** on show pages: marks every aired episode (specials only if you count them),
+  with Undo.
+- Setting a show to **Completed** while aired episodes are unmarked now offers to mark them all.
+  (Completed on its own is only a status; it never marks episodes.)
+
 ## [1.3.0] - 2026-10-20
 
 ### Added

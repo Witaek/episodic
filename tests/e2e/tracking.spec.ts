@@ -114,3 +114,22 @@ test('calendar view, iCal feed and stats', async ({ page }) => {
 	await expect(page.getByText('Time watched')).toBeVisible();
 	await expect(page.getByRole('heading', { name: 'Most watched' })).toBeVisible();
 });
+
+test('mark all watched, and the offer when completing a show', async ({ page }) => {
+	await signIn(page);
+	await page.request.post(`/api/titles/anime/${ANIME_ID}/unwatch`, {
+		data: { target: { type: 'all' } }
+	});
+	await page.request.put(`/api/titles/anime/${ANIME_ID}/library`, {
+		data: { status: 'in_progress' }
+	});
+
+	await page.goto(`/title/anime/${ANIME_ID}`);
+	await page.getByRole('button', { name: 'Watching' }).click();
+	await page.getByRole('menuitem', { name: 'Completed' }).click();
+	await expect(page.getByText('2 aired episodes are not marked as watched.')).toBeVisible();
+	await page.getByRole('button', { name: 'Mark all watched' }).last().click();
+	await expect(page.getByText('2 of 2 aired episodes watched')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Completed' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Mark all watched' })).toHaveCount(0);
+});

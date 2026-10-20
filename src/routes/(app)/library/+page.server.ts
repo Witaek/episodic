@@ -1,5 +1,7 @@
 import { LIBRARY_STATUSES, type LibraryStatus } from '$lib/media-types/types';
+import { showsForAnimeMovies } from '$lib/server/services/franchise';
 import { listLibrary, type LibrarySort } from '$lib/server/services/library';
+import type { LibraryItem } from '$lib/tracking/types';
 import type { PageServerLoad } from './$types';
 
 const TYPES = ['all', 'tv', 'anime', 'movie', 'book'] as const;
@@ -25,12 +27,32 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		return item.mediaType !== 'book';
 	});
 
+	const visible = type === 'all' || type === 'anime' ? foldMovies(ofType) : ofType;
 	const counts = Object.fromEntries(LIBRARY_STATUSES.map((s) => [s, 0])) as Record<
 		LibraryStatus,
 		number
 	>;
-	for (const item of ofType) counts[item.status]++;
-	const items = ofType.filter((item) => item.status === status);
+	for (const item of visible) counts[item.status]++;
+	const items = visible.filter((item) => item.status === status);
 
 	return { status, type, sort, items, counts };
 };
+
+/** Anime movies whose show is in the library are shown on the show's card instead. */
+function foldMovies(items: LibraryItem[]): LibraryItem[] {
+	const movies = items.filter((i) => i.isAnime && i.kind === 'movie');
+	if (movies.length === 0) return items;
+	const showOf = showsForAnimeMovies(movies.map((m) => Number(m.externalId)));
+	const shows = new Map(items.filter((i) => i.kind === 'tv').map((i) => [Number(i.externalId), i]));
+	const bundled = new Map<LibraryItem, number>();
+	const kept = items.filter((item) => {
+		if (!(item.isAnime && item.kind === 'movie')) return true;
+		const show = shows.get(showOf.get(Number(item.externalId)) ?? -1);
+		if (!show) return true;
+		bundled.set(show, (bundled.get(show) ?? 0) + 1);
+		return false;
+	});
+	return kept.map((item) =>
+		bundled.has(item) ? { ...item, bundledMovies: bundled.get(item) } : item
+	);
+}

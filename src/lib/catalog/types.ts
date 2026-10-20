@@ -127,6 +127,25 @@ export interface TitleDetails {
 	sourceUrl: string | null;
 }
 
+/** Languages offered for book search. */
+export const BOOK_LANGUAGES = [
+	{ id: 'en', label: 'English', marc: 'eng' },
+	{ id: 'fr', label: 'Français', marc: 'fre' }
+] as const;
+export type BookLanguage = (typeof BOOK_LANGUAGES)[number]['id'];
+
+/** A specific edition of a book (e.g. the French translation), as the reader sees it. */
+export interface BookEdition {
+	/** Numeric part of the Open Library edition key ("OL19679484M" → "19679484"). */
+	id: string;
+	title: string;
+	cover: Image | null;
+	pages: number | null;
+	language: string | null;
+	publisher: string | null;
+	year: string | null;
+}
+
 export type SearchFilter = 'all' | 'tv' | 'anime' | 'movie' | 'book';
 
 export function titleHref(ref: Pick<TitleRef, 'kind' | 'id'>, season?: number | null): string {

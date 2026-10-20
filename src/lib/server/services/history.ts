@@ -2,7 +2,8 @@ import { and, desc, eq, lt, or, type SQL } from 'drizzle-orm';
 import { titleHref } from '$lib/catalog/types';
 import type { HistoryItem } from '$lib/tracking/types';
 import { getDb } from '../db/client';
-import { activityEvents, episodes, titles } from '../db/schema';
+import { activityEvents, episodes, libraryEntries, titles } from '../db/schema';
+import { editionOf } from './books';
 
 export type { HistoryItem };
 
@@ -36,10 +37,14 @@ export function listHistory(
 	if (type === 'anime') conditions.push(eq(titles.isAnime, true));
 
 	const rows = getDb()
-		.select({ event: activityEvents, title: titles, episode: episodes })
+		.select({ event: activityEvents, title: titles, episode: episodes, entry: libraryEntries })
 		.from(activityEvents)
 		.innerJoin(titles, eq(titles.id, activityEvents.titleId))
 		.leftJoin(episodes, eq(episodes.id, activityEvents.unitId))
+		.leftJoin(
+			libraryEntries,
+			and(eq(libraryEntries.titleId, titles.id), eq(libraryEntries.userId, userId))
+		)
 		.where(and(...conditions))
 		.orderBy(desc(activityEvents.occurredAt), desc(activityEvents.id))
 		.limit(limit + 1)
@@ -48,32 +53,35 @@ export function listHistory(
 	const page = rows.slice(0, limit);
 	const last = page.at(-1);
 	return {
-		items: page.map(({ event, title, episode }) => ({
-			eventId: event.id,
-			occurredAt: event.occurredAt.toISOString(),
-			isRepeat: event.isRepeat,
-			title: {
-				id: title.id,
-				name: title.name,
-				href: titleHref(
-					{ kind: title.kind, id: title.externalId },
-					episode ? episode.seasonNumber : null
-				),
-				mediaType: title.mediaType,
-				isAnime: title.isAnime,
-				poster: title.poster ?? null
-			},
-			episode: episode
-				? {
-						seasonNumber: episode.seasonNumber,
-						number: episode.number,
-						name: episode.name,
-						still: episode.still ?? null,
-						runtime: episode.runtime
-					}
-				: null,
-			runtime: episode?.runtime ?? title.runtime
-		})),
+		items: page.map(({ event, title, episode, entry }) => {
+			const edition = editionOf(entry?.progress);
+			return {
+				eventId: event.id,
+				occurredAt: event.occurredAt.toISOString(),
+				isRepeat: event.isRepeat,
+				title: {
+					id: title.id,
+					name: edition?.title ?? title.name,
+					href: titleHref(
+						{ kind: title.kind, id: title.externalId },
+						episode ? episode.seasonNumber : null
+					),
+					mediaType: title.mediaType,
+					isAnime: title.isAnime,
+					poster: edition?.cover ?? title.poster ?? null
+				},
+				episode: episode
+					? {
+							seasonNumber: episode.seasonNumber,
+							number: episode.number,
+							name: episode.name,
+							still: episode.still ?? null,
+							runtime: episode.runtime
+						}
+					: null,
+				runtime: episode?.runtime ?? title.runtime
+			};
+		}),
 		nextCursor:
 			rows.length > limit && last ? `${last.event.occurredAt.getTime()}:${last.event.id}` : null
 	};

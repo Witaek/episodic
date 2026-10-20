@@ -8,6 +8,8 @@ import type { TitleUserState, WatchResponse, WatchTarget } from './types';
 export interface TitleRefLike {
 	kind: TitleKind;
 	id: string;
+	/** Books: the edition being read, saved with the action. */
+	edition?: string | null;
 }
 
 async function call<T>(url: string, method: string, body?: unknown): Promise<T> {
@@ -25,14 +27,15 @@ async function call<T>(url: string, method: string, body?: unknown): Promise<T> 
 	return data as T;
 }
 
-const base = (ref: TitleRefLike) => `/api/titles/${ref.kind}/${ref.id}`;
+const url = (ref: TitleRefLike, action: string) =>
+	`/api/titles/${ref.kind}/${ref.id}/${action}${ref.edition ? `?edition=${ref.edition}` : ''}`;
 
 export function setLibraryStatus(ref: TitleRefLike, status: LibraryStatus) {
-	return call<{ state: TitleUserState }>(`${base(ref)}/library`, 'PUT', { status });
+	return call<{ state: TitleUserState }>(url(ref, 'library'), 'PUT', { status });
 }
 
 export function removeFromLibrary(ref: TitleRefLike) {
-	return call<{ state: TitleUserState }>(`${base(ref)}/library`, 'DELETE');
+	return call<{ state: TitleUserState }>(url(ref, 'library'), 'DELETE');
 }
 
 export function markWatched(
@@ -40,7 +43,7 @@ export function markWatched(
 	target: WatchTarget,
 	options: { watchedAt?: Date; rewatch?: boolean } = {}
 ) {
-	return call<WatchResponse>(`${base(ref)}/watch`, 'POST', {
+	return call<WatchResponse>(url(ref, 'watch'), 'POST', {
 		target,
 		watchedAt: options.watchedAt?.toISOString(),
 		rewatch: options.rewatch
@@ -48,7 +51,7 @@ export function markWatched(
 }
 
 export function markUnwatched(ref: TitleRefLike, target: WatchTarget) {
-	return call<{ state: TitleUserState }>(`${base(ref)}/unwatch`, 'POST', { target });
+	return call<{ state: TitleUserState }>(url(ref, 'unwatch'), 'POST', { target });
 }
 
 export function undoEvents(eventIds: number[]) {
@@ -63,7 +66,7 @@ export function haptic(pattern: number | number[] = 12) {
 }
 
 export function setReadingPage(ref: TitleRefLike, page: number) {
-	return call<{ finished: boolean; state: TitleUserState }>(`${base(ref)}/progress`, 'PUT', {
+	return call<{ finished: boolean; state: TitleUserState }>(url(ref, 'progress'), 'PUT', {
 		page
 	});
 }

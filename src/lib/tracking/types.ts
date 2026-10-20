@@ -95,6 +95,8 @@ export interface LibraryItem {
 	lastActivityAt: string | null;
 	progress: ProgressSummary | null;
 	reading?: ReadingProgress | null;
+	/** Anime movies of this show that are in the library, shown with the show. */
+	bundledMovies?: number;
 }
 
 export interface HistoryItem {

@@ -13,6 +13,7 @@ import type { UserPrefs } from '../db/schema';
 import { getDb } from '../db/client';
 import { activityEvents, libraryEntries, titles } from '../db/schema';
 import { computeProgress, progressForTitles, watchCounts } from './progress';
+import { editionOf } from './books';
 import { titleEpisodes, type TitleRow } from './titles';
 
 export type LibraryEntry = typeof libraryEntries.$inferSelect;
@@ -27,7 +28,8 @@ export function readingOf(
 	title: Pick<TitleRow, 'pages'>
 ): ReadingProgress {
 	const page = entry?.progress?.page;
-	return { page: typeof page === 'number' ? page : null, pages: title.pages ?? null };
+	const pages = editionOf(entry?.progress)?.pages ?? title.pages ?? null;
+	return { page: typeof page === 'number' ? page : null, pages };
 }
 
 export function getEntry(userId: number, titleId: number): LibraryEntry | undefined {
@@ -145,24 +147,28 @@ export function listLibrary(
 	const showIds = rows.filter((r) => !isWholeTitle(r.title)).map((r) => r.title.id);
 	const progress = progressForTitles(userId, showIds, { includeSpecials: prefs.includeSpecials });
 
-	return rows.map(({ entry, title }) => ({
-		titleId: title.id,
-		kind: title.kind,
-		externalId: title.externalId,
-		href: titleHref({ kind: title.kind, id: title.externalId }),
-		name: title.name,
-		mediaType: title.mediaType,
-		isAnime: title.isAnime,
-		poster: title.poster ?? null,
-		backdrop: title.backdrop ?? null,
-		logo: title.logo ?? null,
-		year: title.startDate ? Number(title.startDate.slice(0, 4)) : null,
-		status: entry.status,
-		addedAt: entry.addedAt.toISOString(),
-		lastActivityAt: entry.lastActivityAt?.toISOString() ?? null,
-		progress: progress.get(title.id) ?? null,
-		reading: title.mediaType === 'book' ? readingOf(entry, title) : null
-	}));
+	return rows.map(({ entry, title }) => {
+		// Books show the reader's edition (e.g. the French title and cover).
+		const edition = title.mediaType === 'book' ? editionOf(entry.progress) : null;
+		return {
+			titleId: title.id,
+			kind: title.kind,
+			externalId: title.externalId,
+			href: titleHref({ kind: title.kind, id: title.externalId }),
+			name: edition?.title ?? title.name,
+			mediaType: title.mediaType,
+			isAnime: title.isAnime,
+			poster: edition?.cover ?? title.poster ?? null,
+			backdrop: title.backdrop ?? null,
+			logo: title.logo ?? null,
+			year: title.startDate ? Number(title.startDate.slice(0, 4)) : null,
+			status: entry.status,
+			addedAt: entry.addedAt.toISOString(),
+			lastActivityAt: entry.lastActivityAt?.toISOString() ?? null,
+			progress: progress.get(title.id) ?? null,
+			reading: title.mediaType === 'book' ? readingOf(entry, title) : null
+		};
+	});
 }
 
 /** Shows you're watching that have an aired episode waiting, most recently active first. */

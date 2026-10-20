@@ -5,6 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-20
+
+### Added
+
+- Anime movies are grouped with their show (e.g. Demon Slayer: Mugen Train with Demon Slayer):
+  a **Movies** section on the show page with one-tap tracking, a "Part of …" link on the movie,
+  and in search and the Library the movies fold into the show ("+2 movies") when both are listed.
+- Book search in English or French (**Books → Language: Any / English / Français**), remembered
+  per person. Results show that language's edition, and the edition you add (title, cover, page
+  count) is what you see in your Library, History and reading progress.
+
 ## [1.2.0] - 2026-10-20
 
 Books.

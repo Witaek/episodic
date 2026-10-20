@@ -11,12 +11,13 @@
 		Star
 	} from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
-	import type { Episode } from '$lib/catalog/types';
+	import { BOOK_LANGUAGES, type Episode } from '$lib/catalog/types';
 	import { posterTint } from '$lib/tint';
 	import { HERO_POSTER } from '$lib/transitions';
 	import { airingSummary } from '$lib/catalog/airing';
 	import EpisodeRow, { type EpisodeActions } from '$lib/components/EpisodeRow.svelte';
 	import EpisodeSheet from '$lib/components/EpisodeSheet.svelte';
+	import FranchiseMovies from '$lib/components/FranchiseMovies.svelte';
 	import Img from '$lib/components/Img.svelte';
 	import MediaRow from '$lib/components/MediaRow.svelte';
 	import PersonCard from '$lib/components/PersonCard.svelte';
@@ -53,7 +54,11 @@
 	const tracker = $derived(
 		title && definition
 			? new TitleTracker(
-					{ kind: title.ref.kind, id: title.ref.id },
+					{
+						kind: title.ref.kind,
+						id: title.ref.id,
+						edition: data.setupNeeded ? null : (data.edition?.id ?? null)
+					},
 					data.setupNeeded ? EMPTY_STATE : data.state,
 					definition.statusLabels
 				)
@@ -220,6 +225,21 @@
 						value: title.mediaType === 'movie' ? '' : formatRuntime(title.runtime)
 					},
 					{ label: 'Pages', value: title.pages ? String(title.pages) : '' },
+					...(!data.setupNeeded && data.edition
+						? [
+								{
+									label: 'Edition',
+									value: [data.edition.publisher, data.edition.year].filter(Boolean).join(', ')
+								},
+								{
+									label: 'Language',
+									value:
+										BOOK_LANGUAGES.find((l) => l.id === data.edition?.language)?.label ??
+										data.edition.language ??
+										''
+								}
+							]
+						: []),
 					{
 						label: 'Original title',
 						value: title.originalName !== title.name ? title.originalName : ''
@@ -306,6 +326,19 @@
 						<span>{item}</span>
 					{/each}
 				</p>
+				{#if !data.setupNeeded}
+					{#await data.partOf then show}
+						{#if show}
+							<a
+								href={show.href}
+								class="mt-3 inline-flex items-center gap-2 rounded-full bg-surface-2/80 px-3 py-1 text-sm font-medium backdrop-blur transition hover:bg-border"
+							>
+								<span class="text-muted">Part of</span>
+								{show.name} →
+							</a>
+						{/if}
+					{/await}
+				{/if}
 				{#if airing}
 					<div class="mt-3 hidden md:block"><StatusChip summary={airing} /></div>
 				{/if}
@@ -538,6 +571,18 @@
 					{/if}
 				{/await}
 			</section>
+		{/if}
+
+		<!-- Anime movies of this show -->
+		{#if !data.setupNeeded && data.movies}
+			{#await data.movies then movies}
+				{#if movies.length}
+					<section class="space-y-4" id="movies">
+						<h2 class="text-xl font-semibold tracking-tight">Movies</h2>
+						<FranchiseMovies {movies} />
+					</section>
+				{/if}
+			{/await}
 		{/if}
 
 		<!-- Cast -->

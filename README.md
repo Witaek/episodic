@@ -30,7 +30,9 @@
 - **Calendar**: a month view of what's airing, plus an iCal feed for your phone's calendar.
 - **Notifications** when new episodes come out, on your phone (Web Push), ntfy or Discord.
 - **Stats**: watch time, streaks, monthly chart, top genres and shows.
-- **Books**: search Open Library, track Want to read / Reading / Read, and your current page.
+- **Books**: search Open Library in English or French, track Want to read / Reading / Read, and
+  your current page in the edition you're reading.
+- **Anime franchises**: movies are grouped with their show (Demon Slayer and its movies).
 
 Later: manga, where-to-watch, and Jellyfin/Plex auto-tracking.
 

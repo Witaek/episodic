@@ -89,6 +89,18 @@ the types in `src/lib/catalog/types.ts`.
 - Page changes use the View Transitions API. The tapped poster morphs into the title page poster
   (`src/lib/transitions.ts`). This is skipped when the user prefers reduced motion.
 
+## Anime franchises and book editions
+
+- **Anime movies** (`services/franchise.ts`): entries of one franchise share a TVDB id in
+  `anime_mappings`, which links TMDB movies to their TMDB show. Show pages list the movies,
+  movie pages link to the show, and `foldAnimeMovies` (search) and the Library's `foldMovies`
+  hide a movie when its show is listed next to it, adding "+N movies" to the show.
+- **Book editions** (`services/books.ts`): searching with a language (Open Library's `lang` plus
+  a `language:` filter) returns each work's best edition in that language. Links carry
+  `?edition=`, and actions on that page save the edition (title, cover, pages, language) in
+  the reader's `library_entries.progress.edition`. The work stays shared; Library, History and
+  page progress show the reader's edition.
+
 ## Calendar, notifications and stats
 
 - `services/upcoming.ts` → `scheduleBetween(user, from, to)` is the one query behind the Upcoming

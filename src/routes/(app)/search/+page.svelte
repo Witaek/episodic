@@ -8,6 +8,7 @@
 	import PosterGridSkeleton from '$lib/components/PosterGridSkeleton.svelte';
 	import SetupNotice from '$lib/components/SetupNotice.svelte';
 	import { SEARCH_FILTERS } from '$lib/media-types/registry';
+	import { BOOK_LANGUAGES } from '$lib/catalog/types';
 
 	let { data } = $props();
 
@@ -21,10 +22,11 @@
 		if (document.activeElement !== input) query = data.query;
 	});
 
-	function urlFor(q: string, filter: SearchFilter) {
+	function urlFor(q: string, filter: SearchFilter, lang: string | null = data.bookLanguage) {
 		const params = new URLSearchParams();
 		if (q.trim()) params.set('q', q.trim());
 		if (filter !== 'all') params.set('type', filter);
+		if (filter === 'book' && lang) params.set('lang', lang);
 		const search = params.toString();
 		return search ? `/search?${search}` : '/search';
 	}
@@ -115,6 +117,27 @@
 			</a>
 		{/each}
 	</div>
+
+	{#if data.filter === 'book'}
+		<div class="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label="Book language">
+			<span class="text-muted">Language</span>
+			{#each [{ id: 'any', label: 'Any' }, ...BOOK_LANGUAGES] as language (language.id)}
+				{@const active = (data.bookLanguage ?? 'any') === language.id}
+				<a
+					href={urlFor(query, 'book', language.id)}
+					data-sveltekit-replacestate
+					data-sveltekit-noscroll
+					data-sveltekit-keepfocus
+					aria-current={active ? 'true' : undefined}
+					class="rounded-full px-3 py-1 font-medium transition-colors {active
+						? 'bg-accent text-accent-fg'
+						: 'bg-surface-2 text-muted hover:text-fg'}"
+				>
+					{language.label}
+				</a>
+			{/each}
+		</div>
+	{/if}
 </div>
 
 <div class="space-y-5 px-4 py-5 md:px-8">

@@ -9,6 +9,7 @@ import {
 	watchTargetSchema
 } from '$lib/server/api';
 import { getUserTitleState } from '$lib/server/services/library';
+import { rememberEdition } from '$lib/server/services/books';
 import { ensureTitle } from '$lib/server/services/titles';
 import { watch } from '$lib/server/services/tracking';
 import type { RequestHandler } from './$types';
@@ -19,7 +20,7 @@ const body = z.object({
 	rewatch: z.boolean().optional()
 });
 
-export const POST: RequestHandler = async ({ locals, params, request }) => {
+export const POST: RequestHandler = async ({ locals, params, request, url }) => {
 	const user = requireUser(locals);
 	const { kind, id } = parseTitleParams(params);
 	const input = await parseBody(request, body);
@@ -33,6 +34,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			watchedAt,
 			rewatch: input.rewatch
 		});
+		await rememberEdition(user.id, title.id, url.searchParams.get('edition'));
 		const response: WatchResponse = {
 			...result,
 			state: getUserTitleState(user.id, title, user.prefs)

@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { WatchTarget } from '$lib/tracking/types';
 import { getDb } from '../db/client';
 import { activityEvents, episodes, libraryEntries, type UserPrefs } from '../db/schema';
+import { editionOf } from './books';
 import { getEntry, isWholeTitle, setStatus, touchEntry } from './library';
 import { compareEpisodes, computeProgress, isAired, watchCounts } from './progress';
 import { titleEpisodes, type TitleRow } from './titles';
@@ -257,8 +258,10 @@ export function setReadingProgress(
 	prefs: UserPrefs
 ): { finished: boolean } {
 	if (title.mediaType !== 'book') throw new TrackingError('Only books have page progress');
-	const clamped = Math.max(0, Math.min(Math.round(page), title.pages ?? Number.MAX_SAFE_INTEGER));
 	const entry = getEntry(userId, title.id);
+	// The reader's edition may have a different page count than the work.
+	const pages = editionOf(entry?.progress)?.pages ?? title.pages;
+	const clamped = Math.max(0, Math.min(Math.round(page), pages ?? Number.MAX_SAFE_INTEGER));
 	const auto = prefs.autoStatus !== false;
 
 	if (!entry) setStatus(userId, title.id, clamped > 0 ? 'in_progress' : 'planned');
@@ -267,11 +270,16 @@ export function setReadingProgress(
 
 	getDb()
 		.update(libraryEntries)
-		.set({ progress: { page: clamped }, lastActivityAt: new Date(), updatedAt: new Date() })
+		.set({
+			// Keep the rest of the progress (e.g. the chosen edition).
+			progress: { ...(getEntry(userId, title.id)?.progress ?? {}), page: clamped },
+			lastActivityAt: new Date(),
+			updatedAt: new Date()
+		})
 		.where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.titleId, title.id)))
 		.run();
 
-	const finished = auto && !!title.pages && clamped >= title.pages && entry?.status !== 'completed';
+	const finished = auto && !!pages && clamped >= pages && entry?.status !== 'completed';
 	if (finished) watch(userId, title, { type: 'book' }, prefs, { rewatch: true });
 	return { finished };
 }

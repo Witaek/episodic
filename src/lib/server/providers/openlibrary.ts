@@ -1,4 +1,12 @@
-import type { Image, SearchResult, TitleDetails, TitleKind } from '$lib/catalog/types';
+import {
+	BOOK_LANGUAGES,
+	type BookEdition,
+	type BookLanguage,
+	type Image,
+	type SearchResult,
+	type TitleDetails,
+	type TitleKind
+} from '$lib/catalog/types';
 import { titleHref } from '$lib/catalog/types';
 import { createHttpClient } from './http';
 import type { LocaleOptions, MetadataProvider } from './provider';
@@ -18,6 +26,7 @@ const get = <T>(path: string) =>
 	request<T>(`${API}${path}`, { headers: { 'user-agent': USER_AGENT } });
 
 export const workId = (key: string) => key.match(/OL(\d+)W/)?.[1] ?? null;
+export const editionId = (key: string) => key.match(/OL(\d+)M/)?.[1] ?? null;
 const workKey = (id: string) => `/works/OL${id}W`;
 
 export function coverImage(coverId: number | null | undefined): Image | null {
@@ -52,6 +61,8 @@ interface SearchDoc {
 	cover_i?: number;
 	number_of_pages_median?: number;
 	ratings_average?: number;
+	/** With `lang`: the best-matching edition in that language. */
+	editions?: { docs: { key: string; title?: string; cover_i?: number }[] };
 }
 
 const FIELDS =
@@ -61,16 +72,19 @@ export function mapDoc(doc: SearchDoc): SearchResult | null {
 	const id = workId(doc.key);
 	if (!id) return null;
 	const ref = { provider: 'openlibrary' as const, kind: 'book' as const, id };
+	// Searching in a language shows that edition: its title and cover, and a link to it.
+	const edition = doc.editions?.docs[0];
+	const edId = edition ? editionId(edition.key) : null;
 	return {
 		ref,
-		href: titleHref(ref),
+		href: edId ? `${titleHref(ref)}?edition=${edId}` : titleHref(ref),
 		mediaType: 'book',
 		isAnime: false,
-		name: doc.title,
-		originalName: null,
+		name: edition?.title ?? doc.title,
+		originalName: edition?.title && edition.title !== doc.title ? doc.title : null,
 		year: doc.first_publish_year ?? null,
 		overview: null,
-		poster: coverImage(doc.cover_i),
+		poster: coverImage(edition?.cover_i ?? doc.cover_i),
 		backdrop: null,
 		// Open Library ratings are out of 5.
 		rating: doc.ratings_average ? Math.round(doc.ratings_average * 20) / 10 : null,
@@ -97,6 +111,42 @@ function description(value: Work['description']): string | null {
 	);
 }
 
+/** Search, optionally limited to works with an edition in `language` (shown as that edition). */
+export async function searchBooks(query: string, language?: BookLanguage): Promise<SearchResult[]> {
+	const marc = BOOK_LANGUAGES.find((l) => l.id === language)?.marc;
+	const params = new URLSearchParams({
+		// Only works that have an edition in that language, showing that edition.
+		q: marc ? `${query} language:${marc}` : query,
+		fields: marc ? `${FIELDS},editions,editions.key,editions.title,editions.cover_i` : FIELDS,
+		limit: '30'
+	});
+	if (language) params.set('lang', language);
+	const data = await get<{ docs: SearchDoc[] }>(`/search.json?${params}`);
+	return data.docs.map(mapDoc).filter((r): r is SearchResult => r !== null);
+}
+
+/** One edition (e.g. a translation): its own title, cover and page count. */
+export async function getEdition(id: string): Promise<BookEdition> {
+	const raw = await get<{
+		title: string;
+		covers?: number[];
+		number_of_pages?: number;
+		languages?: { key: string }[];
+		publishers?: string[];
+		publish_date?: string;
+	}>(`/books/OL${id}M.json`);
+	const marc = raw.languages?.[0]?.key.split('/').pop() ?? null;
+	return {
+		id,
+		title: raw.title,
+		cover: coverImage(raw.covers?.find((c) => c > 0)),
+		pages: raw.number_of_pages ?? null,
+		language: BOOK_LANGUAGES.find((l) => l.marc === marc)?.id ?? marc,
+		publisher: raw.publishers?.[0] ?? null,
+		year: raw.publish_date?.match(/\d{4}/)?.[0] ?? null
+	};
+}
+
 export const openlibrary = {
 	id: 'openlibrary',
 	name: 'Open Library',
@@ -106,11 +156,7 @@ export const openlibrary = {
 
 	isConfigured: () => true,
 
-	async search(query: string) {
-		const params = new URLSearchParams({ q: query, fields: FIELDS, limit: '30' });
-		const data = await get<{ docs: SearchDoc[] }>(`/search.json?${params}`);
-		return data.docs.map(mapDoc).filter((r): r is SearchResult => r !== null);
-	},
+	search: (query: string) => searchBooks(query),
 
 	async trending() {
 		const data = await get<{ works: SearchDoc[] }>('/trending/weekly.json?limit=24');

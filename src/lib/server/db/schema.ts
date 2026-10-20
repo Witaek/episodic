@@ -75,6 +75,8 @@ export interface UserPrefs {
 	autoStatus?: boolean;
 	/** Also notify for shows on the watchlist, not only ones being watched. */
 	notifyWatchlist?: boolean;
+	/** Language last used for book search ('en' | 'fr'). */
+	bookLanguage?: string;
 }
 
 export const users = sqliteTable('users', {

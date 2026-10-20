@@ -1,12 +1,22 @@
 import { error, redirect } from '@sveltejs/kit';
-import type { Season, TitleKind } from '$lib/catalog/types';
+import {
+	titleHref,
+	type BookEdition,
+	type Image,
+	type Season,
+	type TitleKind
+} from '$lib/catalog/types';
+import { animeMoviesForShow, showForAnimeMovie } from '$lib/server/services/franchise';
+import type { UserPrefs } from '$lib/server/db/schema';
 import { NotConfiguredError } from '$lib/server/providers';
-import { getUserTitleState } from '$lib/server/services/library';
+import { editionOf } from '$lib/server/services/books';
+import { getEntry, getUserTitleState } from '$lib/server/services/library';
 import { findTitle, titleEpisodes } from '$lib/server/services/titles';
 import {
 	defaultSeasonNumber,
 	getSeason,
 	getTitle,
+	getBookEdition,
 	isNotFound,
 	type TitleLookup
 } from '$lib/server/services/catalog';
@@ -29,10 +39,28 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	}
 
 	if ('redirect' in lookup) redirect(307, lookup.redirect);
-	const { title } = lookup;
+	// A copy: book editions change some fields for this reader only.
+	const title = { ...lookup.title };
 	const user = locals.user!;
 	const stored = findTitle(kind, params.id);
 	const state = getUserTitleState(user.id, stored, user.prefs);
+
+	// Books: show the edition picked in search (?edition=) or the one this reader saved before.
+	let edition: BookEdition | null = null;
+	if (kind === 'book') {
+		const param = url.searchParams.get('edition');
+		const saved = stored ? editionOf(getEntry(user.id, stored.id)?.progress)?.id : null;
+		const editionId = param && /^\d+$/.test(param) ? param : saved;
+		if (editionId) {
+			edition = await getBookEdition(editionId).catch(() => null);
+			if (edition) {
+				title.originalName = edition.title !== title.name ? title.name : null;
+				title.name = edition.title;
+				title.poster = edition.cover ?? title.poster;
+				title.pages = edition.pages ?? title.pages;
+			}
+		}
+	}
 
 	// Exact air times learned by the background refresh (AniList/TVmaze), keyed "season-number".
 	const airTimes: Record<string, string> = {};
@@ -66,8 +94,17 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		}
 	}
 
-	// `season` is streamed: the page renders immediately and the episode list fills in.
+	// Anime movies live with their show: list them on the show, link back from the movie.
+	const movies =
+		title.isAnime && kind === 'tv' ? franchiseMovies(Number(params.id), user.id, user.prefs) : null;
+	const partOf =
+		title.isAnime && kind === 'movie' ? parentShow(Number(params.id)) : Promise.resolve(null);
+
+	// `season`, `movies` and `partOf` are streamed: the page renders immediately and fills in.
 	return {
+		edition,
+		movies,
+		partOf,
 		setupNeeded: false as const,
 		title,
 		seasonNumber,
@@ -77,3 +114,54 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		refreshedAt: stored?.refreshedAt.toISOString() ?? null
 	};
 };
+
+export interface FranchiseMovie {
+	id: string;
+	href: string;
+	name: string;
+	year: number | null;
+	poster: Image | null;
+	runtime: number | null;
+	plays: number;
+}
+
+async function franchiseMovies(
+	tmdbTvId: number,
+	userId: number,
+	prefs: UserPrefs
+): Promise<FranchiseMovie[]> {
+	const ids = animeMoviesForShow(tmdbTvId);
+	const settled = await Promise.allSettled(ids.map((id) => getTitle('movie', String(id))));
+	return settled.flatMap((outcome, i) => {
+		if (outcome.status === 'rejected' || 'redirect' in outcome.value) return [];
+		const movie = outcome.value.title;
+		const id = String(ids[i]);
+		return [
+			{
+				id,
+				href: titleHref({ kind: 'movie', id }),
+				name: movie.name,
+				year: movie.startDate ? Number(movie.startDate.slice(0, 4)) : null,
+				poster: movie.poster,
+				runtime: movie.runtime,
+				plays: getUserTitleState(userId, findTitle('movie', id), prefs).watched.movie ?? 0
+			}
+		];
+	});
+}
+
+async function parentShow(tmdbMovieId: number) {
+	const showId = showForAnimeMovie(tmdbMovieId);
+	if (!showId) return null;
+	try {
+		const lookup = await getTitle('tv', String(showId));
+		if ('redirect' in lookup) return null;
+		return {
+			href: titleHref({ kind: 'tv', id: String(showId) }),
+			name: lookup.title.name,
+			poster: lookup.title.poster
+		};
+	} catch {
+		return null;
+	}
+}

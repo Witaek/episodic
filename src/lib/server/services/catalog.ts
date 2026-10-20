@@ -3,14 +3,18 @@ import type {
 	SearchResult,
 	Season,
 	TitleDetails,
-	TitleKind
+	TitleKind,
+	BookEdition,
+	BookLanguage
 } from '$lib/catalog/types';
 import { titleHref } from '$lib/catalog/types';
 import { cached, HOUR } from '../cache';
 import { config } from '../config';
 import { mappingsByAnilistIds } from '../providers/anime-mapping';
 import { ProviderError } from '../providers/http';
+import { showsForAnimeMovies } from './franchise';
 import { anilist, openlibrary, tmdb, type LocaleOptions } from '../providers';
+import { getEdition, searchBooks } from '../providers/openlibrary';
 
 /**
  * Catalog: search, browse and title details across providers, with caching.
@@ -29,6 +33,37 @@ export function defaultLocale(): LocaleOptions {
 	return { language: METADATA_LANGUAGE, region: METADATA_REGION };
 }
 
+/**
+ * Anime movies shown next to their own show are folded into it ("+2 movies" on the show card).
+ * A movie whose show isn't in the results stays, so searching for a movie by name still finds it.
+ */
+export function foldAnimeMovies(results: SearchResult[]): SearchResult[] {
+	const movieIds = results
+		.filter((r) => r.isAnime && r.ref.provider === 'tmdb' && r.ref.kind === 'movie')
+		.map((r) => Number(r.ref.id));
+	if (movieIds.length === 0) return results;
+	const showOf = showsForAnimeMovies(movieIds);
+	const shows = new Set(
+		results
+			.filter((r) => r.ref.provider === 'tmdb' && r.ref.kind === 'tv')
+			.map((r) => Number(r.ref.id))
+	);
+	const folded = new Map<number, number>();
+	const kept = results.filter((r) => {
+		if (r.ref.kind !== 'movie' || r.ref.provider !== 'tmdb') return true;
+		const show = showOf.get(Number(r.ref.id));
+		if (show === undefined || !shows.has(show)) return true;
+		folded.set(show, (folded.get(show) ?? 0) + 1);
+		return false;
+	});
+	return kept.map((r) => {
+		const n = r.ref.kind === 'tv' ? folded.get(Number(r.ref.id)) : undefined;
+		if (!n) return r;
+		const movies = `+${n} movie${n === 1 ? '' : 's'}`;
+		return { ...r, badge: r.badge ? `${r.badge} · ${movies}` : movies };
+	});
+}
+
 export interface SearchResponse {
 	results: SearchResult[];
 	/** Set when results are limited because TMDB isn't configured. */
@@ -38,15 +73,18 @@ export interface SearchResponse {
 export async function search(
 	query: string,
 	filter: SearchFilter,
-	locale = defaultLocale()
+	locale = defaultLocale(),
+	{ bookLanguage }: { bookLanguage?: BookLanguage } = {}
 ): Promise<SearchResponse> {
 	const q = query.trim().replace(/\s+/g, ' ');
 	const tmdbReady = tmdb.isConfigured();
 	if (!q) return { results: [], tmdbMissing: !tmdbReady };
 
 	if (filter === 'book') {
-		const results = await cached(`search:openlibrary:${q.toLowerCase()}`, TTL.search, () =>
-			openlibrary.search(q)
+		const results = await cached(
+			`search:openlibrary:${bookLanguage ?? 'any'}:${q.toLowerCase()}`,
+			TTL.search,
+			() => searchBooks(q, bookLanguage)
 		);
 		return { results, tmdbMissing: false };
 	}
@@ -61,7 +99,7 @@ export async function search(
 			const results = await cached(key('anilist'), TTL.search, () =>
 				anilist.search(q, 'anime', locale)
 			);
-			return { results, tmdbMissing: !tmdbReady };
+			return { results: tmdbReady ? foldAnimeMovies(results) : results, tmdbMissing: !tmdbReady };
 		} catch (error) {
 			if (!tmdbReady) throw error;
 			console.warn(`[catalog] AniList search failed, using TMDB: ${String(error)}`);
@@ -69,7 +107,7 @@ export async function search(
 	}
 
 	const results = await cached(key('tmdb'), TTL.search, () => tmdb.search(q, filter, locale));
-	return { results, tmdbMissing: false };
+	return { results: foldAnimeMovies(results), tmdbMissing: false };
 }
 
 export interface BrowseRow {
@@ -180,6 +218,11 @@ export async function getSeason(
 		() => tmdb.getSeason('tv', id, season, locale),
 		{ fresh }
 	);
+}
+
+/** A book edition (translation), cached like titles. */
+export function getBookEdition(id: string, { fresh }: FetchOptions = {}): Promise<BookEdition> {
+	return cached(`edition:openlibrary:${id}`, TTL.title, () => getEdition(id), { fresh });
 }
 
 /** The season to show first when none is requested. */

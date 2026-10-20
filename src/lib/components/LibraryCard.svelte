@@ -49,6 +49,13 @@
 			{eager}
 			class="aspect-[2/3]"
 		/>
+		{#if item.bundledMovies}
+			<span
+				class="absolute top-2 left-2 rounded-full bg-black/65 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur"
+			>
+				+{item.bundledMovies} movie{item.bundledMovies === 1 ? '' : 's'}
+			</span>
+		{/if}
 		{#if item.mediaType === 'book' && item.reading?.page && item.reading.pages && item.status !== 'completed'}
 			<div
 				class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6"

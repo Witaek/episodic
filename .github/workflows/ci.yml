@@ -34,6 +34,13 @@ jobs:
   image:
     needs: test
     runs-on: ubuntu-latest
+    # A push to main and its version tag build the same commit: run them one after the other so
+    # they don't fight over the build cache (the second reuses the first's layers), and fail a
+    # hung build instead of letting it run for hours.
+    concurrency:
+      group: image-${{ github.sha }}
+      cancel-in-progress: false
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write

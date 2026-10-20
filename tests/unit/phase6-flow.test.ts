@@ -20,7 +20,10 @@ const notifications = await import('../../src/lib/server/services/notifications'
 const { localDateString } = await import('../../src/lib/server/services/progress');
 
 const DAY = 86_400_000;
+// Midday today: "aired yesterday at 09:00" is then always inside the 36-hour notification window,
+// whatever time the tests run.
 const now = new Date();
+now.setHours(12, 0, 0, 0);
 const day = (offset: number) => localDateString(new Date(now.getTime() + offset * DAY));
 
 const details: TitleDetails = {

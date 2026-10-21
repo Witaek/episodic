@@ -29,7 +29,7 @@
 		image={next?.still ?? item.backdrop ?? item.poster}
 		alt=""
 		sizes="(min-width: 1024px) 400px, 85vw"
-		maxWidth={780}
+		maxWidth={1280}
 		class="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
 	/>
 	<div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5"></div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Image } from '$lib/catalog/types';
+	import { withTmdbOriginal } from '$lib/images';
 
 	interface Props {
 		image: Image | null;
@@ -11,8 +12,8 @@
 		/** View Transition name, for morphing between pages. */
 		transitionName?: string;
 		/**
-		 * Largest image width to download. Phones pick by screen density, so a 400px-wide card on a
-		 * 3x screen would otherwise fetch a 1280px+ image.
+		 * Largest image width to download, for small images (thumbnails) that would otherwise fetch a
+		 * full-size image on 3x phone screens. The browser already picks by `sizes` and density.
 		 */
 		maxWidth?: number;
 	}
@@ -24,13 +25,13 @@
 		class: className = '',
 		eager = false,
 		transitionName,
-		maxWidth = 1280
+		maxWidth = 1920
 	}: Props = $props();
 
 	// Drop candidates wider than maxWidth (also fixes data stored before sizes were capped).
 	const srcset = $derived.by(() => {
 		if (!image?.srcset) return undefined;
-		const kept = image.srcset
+		const kept = withTmdbOriginal(image.srcset)!
 			.split(',')
 			.map((c) => c.trim())
 			.filter((c) => Number(c.match(/\s(\d+)w$/)?.[1] ?? 0) <= maxWidth);

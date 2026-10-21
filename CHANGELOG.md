@@ -5,6 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-21
+
+### Fixed
+
+- Sharper images again: full-width backdrops on large or high-density screens, and Up Next cards,
+  use TMDB's full-size images instead of the 1280px and 300px versions 1.5.0 capped them at.
+  Small thumbnails (episode lists, history) stay light. Already stored titles get the sharper
+  versions too.
+
 ## [2.0.0] - 2026-10-21
 
 Reading gets a side of its own. See [the reading guide](docs/reading.md).

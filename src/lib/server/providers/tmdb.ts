@@ -38,8 +38,9 @@ const SIZES: Record<ImageKind, { default: string; srcset: [string, number][] }> 
 		srcset: [
 			['w300', 300],
 			['w780', 780],
-			// No 'original': TMDB originals can be 4K and several MB.
-			['w1280', 1280]
+			['w1280', 1280],
+			// Only picked for wide, sharp screens (a full-width hero on a 2x display).
+			['original', 1920]
 		]
 	},
 	profile: {
@@ -51,10 +52,11 @@ const SIZES: Record<ImageKind, { default: string; srcset: [string, number][] }> 
 	},
 	still: {
 		default: 'w300',
-		// Episode thumbnails are small; w300 is plenty even on 3x screens.
+		// Small in episode lists (capped there), large on Up Next cards.
 		srcset: [
 			['w185', 185],
-			['w300', 300]
+			['w300', 300],
+			['original', 1280]
 		]
 	},
 	logo: {

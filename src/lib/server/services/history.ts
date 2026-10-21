@@ -1,5 +1,6 @@
-import { and, desc, eq, lt, or, type SQL } from 'drizzle-orm';
-import { titleHref } from '$lib/catalog/types';
+import { and, desc, eq, inArray, lt, notInArray, or, type SQL } from 'drizzle-orm';
+import { READ_MEDIA_TYPES, titleHref } from '$lib/catalog/types';
+import type { Section } from '$lib/section';
 import type { HistoryItem } from '$lib/tracking/types';
 import { getDb } from '../db/client';
 import { activityEvents, episodes, libraryEntries, titles } from '../db/schema';
@@ -7,7 +8,13 @@ import { editionOf } from './books';
 
 export type { HistoryItem };
 
-export type HistoryType = 'all' | 'tv' | 'anime' | 'movie' | 'book';
+export type HistoryType = 'all' | 'tv' | 'anime' | 'movie' | 'book' | 'manga';
+
+/** Type filters offered on each side's history. */
+export const HISTORY_TYPES: Record<Section, HistoryType[]> = {
+	watch: ['all', 'tv', 'anime', 'movie'],
+	read: ['all', 'book', 'manga']
+};
 
 /** Cursor-paginated watch history, newest first. The cursor is "<epoch ms>:<event id>". */
 export function listHistory(
@@ -15,8 +22,9 @@ export function listHistory(
 	{
 		cursor,
 		limit = 60,
-		type = 'all'
-	}: { cursor?: string | null; limit?: number; type?: HistoryType } = {}
+		type = 'all',
+		section
+	}: { cursor?: string | null; limit?: number; type?: HistoryType; section?: Section } = {}
 ): { items: HistoryItem[]; nextCursor: string | null } {
 	const conditions: SQL[] = [eq(activityEvents.userId, userId)];
 	if (cursor) {
@@ -32,7 +40,11 @@ export function listHistory(
 		}
 	}
 	if (type === 'movie') conditions.push(eq(titles.mediaType, 'movie'));
-	if (type === 'book') conditions.push(eq(titles.mediaType, 'book'));
+	if (type === 'book') conditions.push(inArray(titles.mediaType, ['book', 'bookseries']));
+	if (type === 'manga') conditions.push(eq(titles.mediaType, 'manga'));
+	const read = [...READ_MEDIA_TYPES];
+	if (section === 'read') conditions.push(inArray(titles.mediaType, read));
+	if (section === 'watch') conditions.push(notInArray(titles.mediaType, read));
 	if (type === 'tv') conditions.push(eq(titles.mediaType, 'show'));
 	if (type === 'anime') conditions.push(eq(titles.isAnime, true));
 

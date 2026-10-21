@@ -17,18 +17,22 @@
 			}
 			return [item.year, 'Book'].filter(Boolean).join(' · ');
 		}
+		const type = mediaType(item.mediaType);
+		const reading = type.section === 'read';
 		const p = item.progress;
 		if (item.status === 'in_progress' && p) {
 			if (p.nextUp) {
-				const code = formatEpisodeCode({ season: p.nextUp.seasonNumber, number: p.nextUp.number });
-				return `Next: ${code}`;
+				const unit = { season: p.nextUp.seasonNumber, number: p.nextUp.number };
+				const page = item.reading?.page;
+				if (reading && page) return `${type.formatUnit(unit)} · p. ${page}`;
+				return `Next: ${reading ? type.formatUnit(unit) : formatEpisodeCode(unit)}`;
 			}
-			if (p.upToDate) return 'Up to date';
+			if (p.upToDate) return reading ? 'All caught up' : 'Up to date';
 		}
 		if (item.status === 'completed' || !p) {
-			return [item.year, mediaType(item.mediaType).label].filter(Boolean).join(' · ');
+			return [item.year, type.label].filter(Boolean).join(' · ');
 		}
-		return `${p.watched}/${p.aired} episodes`;
+		return `${p.watched}/${p.aired} ${item.mediaType === 'manga' ? 'chapters' : reading ? 'books' : 'episodes'}`;
 	});
 </script>
 

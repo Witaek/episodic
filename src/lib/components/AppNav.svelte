@@ -1,31 +1,52 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import {
+		BookOpen,
 		CalendarClock,
 		ChartColumn,
 		History,
 		House,
 		Library,
+		LibraryBig,
+		ScanBarcode,
 		Search,
 		Settings
 	} from '@lucide/svelte';
+	import type { Section } from '$lib/section';
+	import SectionSwitch from './SectionSwitch.svelte';
 
-	const items = [
+	let { section }: { section: Section } = $props();
+
+	const watchItems = [
 		{ href: '/', label: 'Home', icon: House },
 		{ href: '/search', label: 'Search', icon: Search },
 		{ href: '/library', label: 'Library', icon: Library },
 		{ href: '/upcoming', label: 'Upcoming', icon: CalendarClock },
-		{ href: '/history', label: 'History', icon: History }
+		{ href: '/history?section=watch', label: 'History', icon: History }
 	];
-	// Settings lives in the sidebar on desktop and behind the avatar on the home screen on phones.
-	const sidebarItems = [
+	const readItems = [
+		{ href: '/read', label: 'Reading', icon: BookOpen },
+		{ href: '/read/search', label: 'Search', icon: Search },
+		{ href: '/read/shelf', label: 'Shelf', icon: LibraryBig },
+		{ href: '/read/stats', label: 'Stats', icon: ChartColumn },
+		{ href: '/history?section=read', label: 'History', icon: History }
+	];
+	const items = $derived(section === 'read' ? readItems : watchItems);
+	// Settings (and Watch stats, Read scanning) live in the sidebar on desktop; on phones they're
+	// reached from the home screens.
+	const sidebarItems = $derived([
 		...items,
-		{ href: '/stats', label: 'Stats', icon: ChartColumn },
+		...(section === 'read'
+			? [{ href: '/read/scan', label: 'Scan a book', icon: ScanBarcode }]
+			: [{ href: '/stats', label: 'Stats', icon: ChartColumn }]),
 		{ href: '/settings', label: 'Settings', icon: Settings }
-	];
+	]);
 
-	const isActive = (href: string) =>
-		href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
+	const isActive = (href: string) => {
+		const [path] = href.split('?');
+		if (path === '/' || path === '/read') return page.url.pathname === path;
+		return page.url.pathname.startsWith(path);
+	};
 </script>
 
 <!-- Desktop sidebar -->
@@ -33,10 +54,11 @@
 	class="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border bg-bg/80 px-3 py-6 backdrop-blur-xl lg:flex"
 	aria-label="Main"
 >
-	<a href="/" class="mb-8 flex items-center gap-2.5 px-3">
+	<a href={section === 'read' ? '/read' : '/'} class="mb-5 flex items-center gap-2.5 px-3">
 		<img src="/favicon.svg" alt="" class="size-8 rounded-lg" />
 		<span class="text-lg font-semibold tracking-tight">Episodic</span>
 	</a>
+	<div class="mb-6 px-2"><SectionSwitch {section} /></div>
 	<ul class="space-y-1">
 		{#each sidebarItems as item (item.href)}
 			{@const active = isActive(item.href)}

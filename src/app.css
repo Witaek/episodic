@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/inter';
+@import '@fontsource-variable/fraunces';
 
 @theme {
 	--font-sans:
@@ -105,4 +106,25 @@ button,
 	::view-transition-new(*) {
 		animation: none !important;
 	}
+}
+
+/* ---------- Read side: warm amber accent and a bookish serif for headings ---------- */
+:root[data-section='read'] {
+	--accent: #f2a541;
+	--accent-fg: #1c1206;
+}
+:root[data-section='read'][data-theme='light'] {
+	--accent: #b45309;
+	--accent-fg: #ffffff;
+}
+@media (prefers-color-scheme: light) {
+	:root[data-section='read'][data-theme='system'] {
+		--accent: #b45309;
+		--accent-fg: #ffffff;
+	}
+}
+:root[data-section='read'] h1,
+:root[data-section='read'] h2 {
+	font-family: var(--font-serif);
+	font-optical-sizing: auto;
 }

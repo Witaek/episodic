@@ -44,6 +44,8 @@ export interface TitleUserState {
 export interface ReadingProgress {
 	page: number | null;
 	pages: number | null;
+	/** Series: which book the page is in. */
+	unit?: { season: number; number: number } | null;
 }
 
 export const EMPTY_STATE: TitleUserState = {

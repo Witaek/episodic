@@ -1,5 +1,6 @@
-import { and, eq, gte, inArray, lte, ne } from 'drizzle-orm';
-import { titleHref } from '$lib/catalog/types';
+import { and, eq, gte, inArray, lte, ne, notInArray } from 'drizzle-orm';
+import { READ_MEDIA_TYPES, titleHref } from '$lib/catalog/types';
+import type { Section } from '$lib/section';
 import type { LibraryStatus } from '$lib/media-types/types';
 import type { AnnouncedSeason, UpcomingItem } from '$lib/tracking/types';
 import { getDb } from '../db/client';
@@ -10,12 +11,19 @@ const DAY = 24 * 60 * 60 * 1000;
 
 type Entry = { title: typeof titles.$inferSelect; status: LibraryStatus };
 
-function libraryEntriesFor(userId: number): Map<number, Entry> {
+function libraryEntriesFor(userId: number, section: Section): Map<number, Entry> {
+	const read = [...READ_MEDIA_TYPES];
 	const rows = getDb()
 		.select({ title: titles, status: libraryEntries.status })
 		.from(libraryEntries)
 		.innerJoin(titles, eq(titles.id, libraryEntries.titleId))
-		.where(and(eq(libraryEntries.userId, userId), ne(libraryEntries.status, 'dropped')))
+		.where(
+			and(
+				eq(libraryEntries.userId, userId),
+				ne(libraryEntries.status, 'dropped'),
+				section === 'read' ? inArray(titles.mediaType, read) : notInArray(titles.mediaType, read)
+			)
+		)
 		.all();
 	return new Map(rows.map((e) => [e.title.id, e]));
 }
@@ -38,8 +46,13 @@ function baseItem(entry: Entry) {
  * Episodes and movie releases between two local dates (inclusive, "YYYY-MM-DD") for titles in the
  * user's library (everything except Dropped), with whether each one is already watched.
  */
-export function scheduleBetween(userId: number, from: string, to: string): UpcomingItem[] {
-	const byId = libraryEntriesFor(userId);
+export function scheduleBetween(
+	userId: number,
+	from: string,
+	to: string,
+	section: Section = 'watch'
+): UpcomingItem[] {
+	const byId = libraryEntriesFor(userId, section);
 	if (byId.size === 0) return [];
 	const ids = [...byId.keys()];
 	const shift = (date: string, days: number) => {
@@ -104,18 +117,22 @@ export function scheduleBetween(userId: number, from: string, to: string): Upcom
  */
 export function upcoming(
 	userId: number,
-	{ days = 30, now = new Date() }: { days?: number; now?: Date } = {}
+	{
+		days = 30,
+		now = new Date(),
+		section = 'watch'
+	}: { days?: number; now?: Date; section?: Section } = {}
 ): { items: UpcomingItem[]; announced: AnnouncedSeason[] } {
 	const today = localDateString(now);
 	const horizon = localDateString(new Date(now.getTime() + days * DAY));
 	const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
 	// Keep today's already-aired episodes; they're shown as "Aired".
-	const items = scheduleBetween(userId, today, horizon).filter(
+	const items = scheduleBetween(userId, today, horizon, section).filter(
 		(item) => !item.airAt || new Date(item.airAt) >= startOfToday
 	);
 
-	const byId = libraryEntriesFor(userId);
+	const byId = libraryEntriesFor(userId, section);
 	const announced = announcedSeasons(
 		[...byId.keys()],
 		byId,

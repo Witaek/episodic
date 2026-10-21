@@ -16,20 +16,30 @@
 
 	const groups = $derived(groupByDay(items, (item) => new Date(item.occurredAt)));
 
-	const types = [
-		{ id: 'all', label: 'All' },
-		{ id: 'tv', label: 'TV shows' },
-		{ id: 'anime', label: 'Anime' },
-		{ id: 'movie', label: 'Movies' },
-		{ id: 'book', label: 'Books' }
-	];
+	const read = $derived(data.section === 'read');
+	const types = $derived(
+		read
+			? [
+					{ id: 'all', label: 'All' },
+					{ id: 'book', label: 'Books' },
+					{ id: 'manga', label: 'Manga' }
+				]
+			: [
+					{ id: 'all', label: 'All' },
+					{ id: 'tv', label: 'TV shows' },
+					{ id: 'anime', label: 'Anime' },
+					{ id: 'movie', label: 'Movies' }
+				]
+	);
+	const hrefFor = (type: string) =>
+		`/history?section=${data.section}${type === 'all' ? '' : `&type=${type}`}`;
 
 	async function loadMore() {
 		if (!cursor || loading) return;
 		loading = true;
 		try {
 			const response = await fetch(
-				`/api/history?type=${data.type}&cursor=${encodeURIComponent(cursor)}`
+				`/api/history?section=${data.section}&type=${data.type}&cursor=${encodeURIComponent(cursor)}`
 			);
 			const page = (await response.json()) as { items: HistoryItem[]; nextCursor: string | null };
 			items = [...items, ...page.items];
@@ -80,7 +90,7 @@
 	<div class="flex items-center justify-between gap-3">
 		<h1 class="text-2xl font-bold tracking-tight">History</h1>
 		<a
-			href="/stats"
+			href={read ? '/read/stats' : '/stats'}
 			class="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1.5 text-sm font-medium text-muted hover:text-fg"
 		>
 			<ChartColumn class="size-4" /> Stats
@@ -89,7 +99,7 @@
 	<nav class="flex gap-4 text-sm" aria-label="Type">
 		{#each types as type (type.id)}
 			<a
-				href={type.id === 'all' ? '/history' : `/history?type=${type.id}`}
+				href={hrefFor(type.id)}
 				data-sveltekit-replacestate
 				data-sveltekit-noscroll
 				class="pb-0.5 font-medium transition-colors {data.type === type.id
@@ -139,7 +149,7 @@
 			</div>
 			<p class="font-medium">No history yet</p>
 			<p class="mt-1 max-w-xs text-sm text-muted">
-				Everything you mark as watched shows up here, day by day.
+				Everything you mark as {read ? 'read' : 'watched'} shows up here, day by day.
 			</p>
 		</div>
 	{/if}

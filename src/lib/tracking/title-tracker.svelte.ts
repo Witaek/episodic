@@ -1,5 +1,10 @@
 import { toast } from 'svelte-sonner';
-import { formatEpisodeCode, VIDEO_STATUS_LABELS, type LibraryStatus } from '$lib/media-types/types';
+import {
+	formatEpisodeCode,
+	VIDEO_STATUS_LABELS,
+	type LibraryStatus,
+	type ProgressUnit
+} from '$lib/media-types/types';
 import {
 	haptic,
 	markUnwatched,
@@ -12,6 +17,33 @@ import {
 } from './client';
 import { MOVIE_KEY, episodeKey, type TitleUserState, type WatchTarget } from './types';
 
+export interface Wording {
+	formatUnit: (unit: ProgressUnit) => string;
+	done: string;
+	undone: string;
+	again: string;
+	unit: string;
+	units: string;
+}
+
+export const VIDEO_WORDING: Wording = {
+	formatUnit: formatEpisodeCode,
+	done: 'watched',
+	undone: 'unwatched',
+	again: 'rewatched',
+	unit: 'episode',
+	units: 'episodes'
+};
+
+/** Wording for books and manga, given how the media type names its units. */
+export function readingWording(
+	formatUnit: (unit: ProgressUnit) => string,
+	unit = 'book',
+	units = 'books'
+): Wording {
+	return { formatUnit, done: 'read', undone: 'unread', again: 'reread', unit, units };
+}
+
 /**
  * Tracking state for one title page: optimistic updates, toasts with Undo, and the
  * "also mark earlier episodes?" offer.
@@ -23,7 +55,9 @@ export class TitleTracker {
 	constructor(
 		private readonly ref: TitleRefLike,
 		initial: TitleUserState,
-		private readonly statusLabels: Record<LibraryStatus, string> = VIDEO_STATUS_LABELS
+		private readonly statusLabels: Record<LibraryStatus, string> = VIDEO_STATUS_LABELS,
+		/** How units are named and the verb used in messages ("S02E05 watched", "Book 4 read"). */
+		private readonly wording: Wording = VIDEO_WORDING
 	) {
 		this.state = initial;
 	}
@@ -82,7 +116,7 @@ export class TitleTracker {
 		if (this.plays(season, number) > 0) {
 			await this.unwatch(
 				{ type: 'episode', season, number },
-				`${formatEpisodeCode({ season, number })} marked unwatched`
+				`${this.wording.formatUnit({ season, number })} marked ${this.wording.undone}`
 			);
 		} else {
 			await this.watch({ type: 'episode', season, number });
@@ -133,11 +167,11 @@ export class TitleTracker {
 	}
 
 	/** Books: save the current page. */
-	async setPage(page: number) {
+	async setPage(page: number, unit?: { season: number; number: number }) {
 		const previous = $state.snapshot(this.state);
-		this.state.reading = { page, pages: this.state.reading?.pages ?? null };
+		this.state.reading = { page, pages: this.state.reading?.pages ?? null, unit: unit ?? null };
 		try {
-			const result = await setReadingPage(this.ref, page);
+			const result = await setReadingPage(this.ref, page, unit);
 			this.state = result.state;
 			if (result.finished) toast.success('Finished! Marked as read');
 			else toast.success(`Saved: page ${page}`);
@@ -158,16 +192,16 @@ export class TitleTracker {
 	}
 
 	private describe(target: WatchTarget, count: number, rewatch?: boolean): string {
-		const verb = rewatch ? 'rewatched' : 'watched';
+		const verb = rewatch ? this.wording.again : this.wording.done;
 		switch (target.type) {
 			case 'episode':
-				return `${formatEpisodeCode({ season: target.season, number: target.number })} ${verb}`;
+				return `${this.wording.formatUnit({ season: target.season, number: target.number })} ${verb}`;
 			case 'movie':
 				return rewatch ? 'Rewatch logged' : 'Marked as watched';
 			case 'book':
 				return rewatch ? 'Reread logged' : 'Marked as read';
 			default:
-				return `${count} episode${count === 1 ? '' : 's'} marked as watched`;
+				return `${count} ${count === 1 ? this.wording.unit : this.wording.units} marked as ${this.wording.done}`;
 		}
 	}
 

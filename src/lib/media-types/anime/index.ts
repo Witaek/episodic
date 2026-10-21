@@ -7,6 +7,7 @@ import { formatEpisodeCode, VIDEO_STATUS_LABELS, type MediaTypeDefinition } from
  */
 export const anime: MediaTypeDefinition = {
 	id: 'anime',
+	section: 'watch',
 	label: 'Anime',
 	pluralLabel: 'Anime',
 	searchFilter: 'anime',

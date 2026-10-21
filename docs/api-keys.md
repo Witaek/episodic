@@ -3,11 +3,14 @@
 Episodic gets its show, anime and movie information from public services. **Only TMDB needs a key**,
 and it's free for personal use.
 
-| Service                            | What it provides                                       | Key                 |
-| ---------------------------------- | ------------------------------------------------------ | ------------------- |
-| [TMDB](https://www.themoviedb.org) | Movies, TV shows, anime episode lists, images, cast    | **Required** (free) |
-| [AniList](https://anilist.co)      | Anime search, exact airing times, sequel announcements | None                |
-| [TVmaze](https://www.tvmaze.com)   | Exact air times for TV shows                           | None                |
+| Service                                 | What it provides                                    | Key                 |
+| --------------------------------------- | --------------------------------------------------- | ------------------- |
+| [TMDB](https://www.themoviedb.org)      | Movies, TV shows, anime episode lists, images, cast | **Required** (free) |
+| [AniList](https://anilist.co)           | Anime and manga, exact airing times, sequels        | None                |
+| [TVmaze](https://www.tvmaze.com)        | Exact air times for TV shows                        | None                |
+| [Open Library](https://openlibrary.org) | Books, editions, covers, ISBN lookup                | None                |
+| [Wikidata](https://www.wikidata.org)    | Book series and their order, adaptations            | None                |
+| [MangaDex](https://mangadex.org)        | Manga volumes, chapters and volume covers           | None                |
 
 ## TMDB: API Read Access Token
 

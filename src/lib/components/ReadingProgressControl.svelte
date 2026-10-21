@@ -3,11 +3,22 @@
 	import type { TitleTracker } from '$lib/tracking/title-tracker.svelte';
 	import ProgressBar from './ProgressBar.svelte';
 
-	let { tracker, pages: titlePages = null }: { tracker: TitleTracker; pages?: number | null } =
-		$props();
+	interface Props {
+		tracker: TitleTracker;
+		pages?: number | null;
+		/** Series: the book this page count is for. */
+		unit?: { season: number; number: number };
+	}
 
-	const reading = $derived(tracker.state.reading);
-	const pages = $derived(reading?.pages ?? titlePages);
+	let { tracker, pages: titlePages = null, unit }: Props = $props();
+
+	// In a series, the saved page only applies to the book it was saved for.
+	const reading = $derived.by(() => {
+		const r = tracker.state.reading;
+		if (!unit) return r;
+		return r?.unit && r.unit.season === unit.season && r.unit.number === unit.number ? r : null;
+	});
+	const pages = $derived(titlePages ?? reading?.pages ?? null);
 	let draft = $state('');
 	$effect(() => {
 		draft = reading?.page ? String(reading.page) : '';
@@ -20,7 +31,7 @@
 		event.preventDefault();
 		const page = Number(draft);
 		if (!Number.isFinite(page) || page < 0) return;
-		void tracker.setPage(pages ? Math.min(page, pages) : page);
+		void tracker.setPage(pages ? Math.min(page, pages) : page, unit);
 	}
 </script>
 

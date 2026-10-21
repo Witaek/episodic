@@ -3,7 +3,15 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { E2E_DATA_DIR } from '../../playwright.config';
-import { ANIME_ID, ANIME_NAME, searchResults, season, title } from './fixtures';
+import {
+	ANIME_ID,
+	ANIME_NAME,
+	SERIES_ID,
+	searchResults,
+	season,
+	seriesBundle,
+	title
+} from './fixtures';
 
 /** Seeds provider responses into the response cache so the app never calls AniList/TMDB. */
 export default function globalSetup() {
@@ -23,5 +31,8 @@ export default function globalSetup() {
 	put.run('trending:book:en-US', JSON.stringify([]), farFuture);
 	put.run(`title:anilist:${ANIME_ID}`, JSON.stringify(title), farFuture);
 	put.run(`season:anilist:${ANIME_ID}`, JSON.stringify(season), farFuture);
+	put.run(`series:wikidata:${SERIES_ID}:en`, JSON.stringify(seriesBundle), farFuture);
+	put.run('trending:books', JSON.stringify([]), farFuture);
+	put.run('trending:manga', JSON.stringify([]), farFuture);
 	sqlite.close();
 }

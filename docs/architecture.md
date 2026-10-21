@@ -101,6 +101,39 @@ the types in `src/lib/catalog/types.ts`.
   the reader's `library_entries.progress.edition`. The work stays shared; Library, History and
   page progress show the reader's edition.
 
+## The Read side
+
+Books, book series and manga live under `/read/…`; everything else under `/`, `/title/…`. The two
+sides share code and differ by a `Section` (`src/lib/section.ts`):
+
+- **Which side.** `sectionFor(url, remembered)` decides from the path; History and Settings are
+  shared and use `?section=` or the side remembered in the `episodic_section` cookie.
+  `hooks.server.ts` sends `/` to `/read` when Read was the last side, and sets
+  `<html data-section>` so `app.css` switches to the amber accent and serif headings.
+- **Shared pages.** `server/library-page.ts`, `server/search-page.ts` and `server/title-page.ts`
+  load Library/Shelf, Search and title pages for either side; the route files are thin wrappers
+  around `LibraryPage.svelte`, `SearchPage.svelte` and `TitlePage.svelte`. `listLibrary`,
+  `upNext`, `upcoming`/`scheduleBetween` and `listHistory` take a `section` filter
+  (`READ_MEDIA_TYPES`); notifications and watch stats ignore read types.
+- **Kinds.** `book` (Open Library work), `series` (Wikidata Q-number), `manga` (AniList id) and
+  `collection` (a series grouped by hand, provider `local`, stored only in the database).
+  Series and manga are shaped like shows by `services/reading.ts`: a series' numbered books are
+  season 1 (extras season 0); a manga's volumes are seasons and chapters episodes, with
+  `services/manga-volumes.ts` spreading chapters MangaDex doesn't place. `episodes.external_id`
+  holds the book's Open Library work and `episodes.pages` its page count.
+- **Books into series.** `services/book-series.ts` moves a user's events, page and status from a
+  single book into its series (`absorbBook`), from the book page and the daily
+  `books-into-series` job. It also creates, fills and restores hand-made series.
+- **Search.** `services/read-search.ts` folds book results into series cards
+  (`foldIntoSeries`, membership from `wikidata.seriesForWorks`, cached a week).
+- **Adaptations.** `services/adaptations.ts` reads Wikidata "based on" (P144) with TMDB ids, and
+  for manga AniList relations plus the anime mapping.
+- **Reading stats** (`services/reading-stats.ts`) count finished books, finished manga volumes
+  (every chapter read) and pages; the yearly goal is `prefs.readingGoal`.
+- **Scanning.** `/read/scan` uses the native `BarcodeDetector` or the `barcode-detector` ponyfill,
+  whose WebAssembly file is bundled (`zxing-wasm/reader/zxing_reader.wasm?url`) instead of loaded
+  from a CDN. `/api/books/isbn/<isbn>` looks the edition up on Open Library.
+
 ## Calendar, notifications and stats
 
 - `services/upcoming.ts` → `scheduleBetween(user, from, to)` is the one query behind the Upcoming
@@ -141,12 +174,15 @@ The `refresh-titles` job runs every 20 minutes and refreshes up to 25 overdue ti
 
 ## Metadata sources
 
-| Provider    | Used for                                                                                 | Rate limit used                  |
-| ----------- | ---------------------------------------------------------------------------------------- | -------------------------------- |
-| TMDB        | Search, trending, movie and TV details, seasons and episodes (including anime structure) | 20 requests/s, 8 at once         |
-| AniList     | Anime search and trending, exact airing times, AniList-only titles                       | about 27 requests/min, 2 at once |
-| TVmaze      | Exact air times for TV shows (wired in during phase 3)                                   | 18 requests/10s                  |
-| anime-lists | AniList → TMDB id mapping, refreshed weekly by the `anime-mappings` job                  | —                                |
+| Provider     | Used for                                                                                 | Rate limit used                  |
+| ------------ | ---------------------------------------------------------------------------------------- | -------------------------------- |
+| TMDB         | Search, trending, movie and TV details, seasons and episodes (including anime structure) | 20 requests/s, 8 at once         |
+| AniList      | Anime search and trending, exact airing times, AniList-only titles                       | about 27 requests/min, 2 at once |
+| TVmaze       | Exact air times for TV shows (wired in during phase 3)                                   | 18 requests/10s                  |
+| anime-lists  | AniList → TMDB id mapping, refreshed weekly by the `anime-mappings` job                  | —                                |
+| Open Library | Book search, editions, covers and page counts, ISBN lookup                               | —                                |
+| Wikidata     | Book series and their order, adaptations ("based on") with TMDB ids                      | SPARQL, cached                   |
+| MangaDex     | Manga volumes, chapters and volume covers                                                | —                                |
 
 **How anime works:** an AniList search result is looked up in `anime_mappings`. If it maps to a
 TMDB show, the result links to that show at the mapped season (`/title/tv/95479?season=2`), so

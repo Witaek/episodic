@@ -420,3 +420,162 @@ export async function upcomingAiringSchedules(
 	}
 	return result;
 }
+
+// ---------- Manga ----------
+
+const MANGA_FIELDS = `
+	id idMal format status chapters volumes countryOfOrigin averageScore genres
+	title { romaji english native userPreferred }
+	startDate { year month day }
+	endDate { year month day }
+	coverImage { extraLarge large color }
+	bannerImage
+	description(asHtml: false)
+`;
+
+export interface RawManga {
+	id: number;
+	idMal: number | null;
+	format: string | null;
+	status: string | null;
+	chapters: number | null;
+	volumes: number | null;
+	countryOfOrigin: string | null;
+	averageScore: number | null;
+	genres: string[];
+	title: {
+		romaji: string | null;
+		english: string | null;
+		native: string | null;
+		userPreferred: string;
+	};
+	startDate: FuzzyDate;
+	endDate: FuzzyDate;
+	coverImage: { extraLarge: string | null; large: string | null; color: string | null };
+	bannerImage: string | null;
+	description: string | null;
+}
+
+export interface RawMangaDetails extends RawManga {
+	staff: { edges: { role: string; node: { name: { full: string } } }[] };
+	relations: {
+		edges: {
+			relationType: string;
+			node: {
+				id: number;
+				type: string;
+				format: string | null;
+				status: string | null;
+				title: { userPreferred: string; english: string | null };
+				startDate: FuzzyDate;
+				coverImage: { large: string | null };
+			};
+		}[];
+	};
+}
+
+const MANGA_SEARCH = `query ($search: String) {
+	Page(perPage: 30) { media(search: $search, type: MANGA, sort: SEARCH_MATCH, isAdult: false) { ${MANGA_FIELDS} } }
+}`;
+const MANGA_TRENDING = `query {
+	Page(perPage: 24) { media(type: MANGA, sort: TRENDING_DESC, isAdult: false) { ${MANGA_FIELDS} } }
+}`;
+const MANGA_DETAILS = `query ($id: Int) {
+	Media(id: $id, type: MANGA) {
+		${MANGA_FIELDS}
+		staff(sort: [RELEVANCE], perPage: 6) { edges { role node { name { full } } } }
+		relations { edges { relationType node {
+			id type format status title { userPreferred english } startDate { year month day } coverImage { large }
+		} } }
+	}
+}`;
+
+const COUNTRY_LABELS: Record<string, string> = { KR: 'Manhwa', CN: 'Manhua', TW: 'Manhua' };
+const MANGA_FORMATS: Record<string, string> = { NOVEL: 'Light novel', ONE_SHOT: 'One-shot' };
+
+export function mangaBadge(m: Pick<RawManga, 'format' | 'countryOfOrigin' | 'volumes'>): string {
+	const kind = MANGA_FORMATS[m.format ?? ''] ?? COUNTRY_LABELS[m.countryOfOrigin ?? ''] ?? 'Manga';
+	return m.volumes ? `${kind} · ${m.volumes} vol.` : kind;
+}
+
+export function mangaTitle(m: Pick<RawManga, 'title'>): string {
+	return m.title.english ?? m.title.userPreferred ?? m.title.romaji ?? 'Untitled';
+}
+
+export function mapManga(m: RawManga): SearchResult {
+	const ref = { provider: 'anilist' as const, kind: 'manga' as const, id: String(m.id) };
+	return {
+		ref,
+		href: titleHref(ref),
+		mediaType: 'manga',
+		isAnime: false,
+		name: mangaTitle(m),
+		originalName: m.title.native ?? m.title.romaji,
+		year: m.startDate.year ?? null,
+		overview: stripDescription(m.description),
+		poster:
+			(m.coverImage.extraLarge ?? m.coverImage.large)
+				? { url: (m.coverImage.extraLarge ?? m.coverImage.large)!, color: m.coverImage.color }
+				: null,
+		backdrop: m.bannerImage ? { url: m.bannerImage } : null,
+		rating: m.averageScore ? m.averageScore / 10 : null,
+		badge: mangaBadge(m)
+	};
+}
+
+export async function searchManga(search: string): Promise<SearchResult[]> {
+	const data = await query<{ Page: { media: RawManga[] } }>(MANGA_SEARCH, { search });
+	return data.Page.media.map(mapManga);
+}
+
+export async function trendingManga(): Promise<SearchResult[]> {
+	const data = await query<{ Page: { media: RawManga[] } }>(MANGA_TRENDING, {});
+	return data.Page.media.map(mapManga);
+}
+
+export async function mangaDetails(id: string): Promise<RawMangaDetails> {
+	const data = await query<{ Media: RawMangaDetails }>(MANGA_DETAILS, { id: Number(id) });
+	return data.Media;
+}
+
+const SOURCE_QUERY = `query ($ids: [Int]) {
+	Page(perPage: 50) { media(id_in: $ids, type: ANIME) {
+		id relations { edges { relationType node { id type title { userPreferred english } coverImage { large } } } }
+	} }
+}`;
+
+/** The manga an anime is adapted from, for a set of AniList anime ids (one request). */
+export async function sourceMangaForAnime(
+	animeIds: number[]
+): Promise<{ id: number; name: string; cover: string | null }[]> {
+	if (animeIds.length === 0) return [];
+	const data = await query<{
+		Page: {
+			media: {
+				relations: {
+					edges: {
+						relationType: string;
+						node: {
+							id: number;
+							type: string;
+							title: { userPreferred: string; english: string | null };
+							coverImage: { large: string | null };
+						};
+					}[];
+				};
+			}[];
+		};
+	}>(SOURCE_QUERY, { ids: animeIds.slice(0, 50) });
+	const found = new Map<number, { id: number; name: string; cover: string | null }>();
+	for (const media of data.Page.media) {
+		for (const edge of media.relations.edges) {
+			if (edge.relationType !== 'SOURCE' || edge.node.type !== 'MANGA') continue;
+			found.set(edge.node.id, {
+				id: edge.node.id,
+				name: edge.node.title.english ?? edge.node.title.userPreferred,
+				cover: edge.node.coverImage.large
+			});
+		}
+	}
+	return [...found.values()];
+}

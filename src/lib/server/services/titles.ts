@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { ProviderId, Season, TitleDetails, TitleKind } from '$lib/catalog/types';
 import { getDb } from '../db/client';
 import { episodes, seasons, titles } from '../db/schema';
+import type { LocaleOptions } from '../providers';
 import { getSeason, getTitle } from './catalog';
 
 /**
@@ -12,7 +13,19 @@ import { getSeason, getTitle } from './catalog';
 export type TitleRow = typeof titles.$inferSelect;
 
 export function providerFor(kind: TitleKind): ProviderId {
-	return kind === 'anime' ? 'anilist' : kind === 'book' ? 'openlibrary' : 'tmdb';
+	switch (kind) {
+		case 'anime':
+		case 'manga':
+			return 'anilist';
+		case 'book':
+			return 'openlibrary';
+		case 'series':
+			return 'wikidata';
+		case 'collection':
+			return 'local';
+		default:
+			return 'tmdb';
+	}
 }
 
 export function findTitle(kind: TitleKind, externalId: string): TitleRow | undefined {
@@ -34,8 +47,12 @@ export function getTitleRow(id: number): TitleRow | undefined {
 }
 
 /** Returns the stored title, fetching and storing it first if needed. */
-export async function ensureTitle(kind: TitleKind, externalId: string): Promise<TitleRow> {
-	return findTitle(kind, externalId) ?? (await syncTitle(kind, externalId));
+export async function ensureTitle(
+	kind: TitleKind,
+	externalId: string,
+	locale?: LocaleOptions
+): Promise<TitleRow> {
+	return findTitle(kind, externalId) ?? (await syncTitle(kind, externalId, { locale }));
 }
 
 export interface SyncOptions {
@@ -46,15 +63,23 @@ export interface SyncOptions {
 	 * regular seasons, which is where changes happen; older seasons keep their stored episodes.
 	 */
 	seasons?: 'all' | 'recent';
+	/** Language to load in (book series and manga follow the reader's book language). */
+	locale?: LocaleOptions;
 }
 
 /** Fetches a title (and its seasons) from its provider and stores it. */
 export async function syncTitle(
 	kind: TitleKind,
 	externalId: string,
-	{ fresh = false, seasons: which = 'all' }: SyncOptions = {}
+	{ fresh = false, seasons: which = 'all', locale }: SyncOptions = {}
 ): Promise<TitleRow> {
-	const lookup = await getTitle(kind, externalId, undefined, { fresh });
+	// Hand-made collections only exist here; there is nothing to fetch.
+	if (kind === 'collection') {
+		const stored = findTitle(kind, externalId);
+		if (!stored) throw new Error(`Collection ${externalId} not found`);
+		return stored;
+	}
+	const lookup = await getTitle(kind, externalId, locale, { fresh });
 	if ('redirect' in lookup) {
 		throw new Error(`${kind}/${externalId} is tracked as ${lookup.redirect}`);
 	}
@@ -81,7 +106,7 @@ export async function syncTitle(
 	}
 
 	const fetchedSeasons: Season[] = await Promise.all(
-		wanted.map((n) => getSeason(kind, externalId, n, undefined, { fresh }))
+		wanted.map((n) => getSeason(kind, externalId, n, locale, { fresh }))
 	);
 	return storeTitle(kind, externalId, details, fetchedSeasons, { full: which === 'all' });
 }
@@ -158,7 +183,8 @@ export function storeTitle(
 					airDate: episode.airDate,
 					airAt: episode.airAt ?? null,
 					runtime: episode.runtime ?? details.runtime,
-					externalId: episode.id
+					pages: episode.pages ?? null,
+					externalId: episode.work ?? episode.id
 				};
 				tx.insert(episodes)
 					.values(episodeValues)

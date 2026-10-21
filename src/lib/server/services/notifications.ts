@@ -1,6 +1,6 @@
-import { and, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, notInArray } from 'drizzle-orm';
 import webpush from 'web-push';
-import { titleHref } from '$lib/catalog/types';
+import { READ_MEDIA_TYPES, titleHref } from '$lib/catalog/types';
 import { formatEpisodeCode } from '$lib/media-types/types';
 import { config } from '../config';
 import { getDb } from '../db/client';
@@ -273,6 +273,8 @@ export function pendingNotifications(now = new Date()): PendingNotification[] {
 			.where(
 				and(
 					inArray(libraryEntries.status, statuses as ('in_progress' | 'planned')[]),
+					// Episode alerts only: books and manga have no air times.
+					notInArray(titles.mediaType, [...READ_MEDIA_TYPES]),
 					gte(episodes.airDate, from),
 					lte(episodes.airDate, to)
 				)

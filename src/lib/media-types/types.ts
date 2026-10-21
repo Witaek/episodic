@@ -21,6 +21,8 @@ export interface ProgressUnit {
 
 export interface MediaTypeDefinition {
 	id: MediaTypeId;
+	/** Which side of the app it lives on. */
+	section: 'watch' | 'read';
 	label: string;
 	pluralLabel: string;
 	/** Search tab this type appears under. */

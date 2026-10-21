@@ -1,9 +1,11 @@
 import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
-import type { TitleKind } from '$lib/catalog/types';
+import { READ_KINDS, type TitleKind } from '$lib/catalog/types';
 import type { SessionUser } from './auth';
 import { NotConfiguredError } from './providers';
 import { isNotFound } from './services/catalog';
+import { readLocale } from './services/adaptations';
+import { ensureTitle } from './services/titles';
 import { TrackingError } from './services/tracking';
 
 /** Helpers for JSON API routes. */
@@ -13,7 +15,7 @@ export function requireUser(locals: App.Locals): SessionUser {
 	return locals.user;
 }
 
-const KINDS = ['movie', 'tv', 'anime', 'book'] as const;
+const KINDS = ['movie', 'tv', 'anime', 'book', 'series', 'collection', 'manga'] as const;
 
 export function parseTitleParams(params: { kind: string; id: string }): {
 	kind: TitleKind;
@@ -70,3 +72,8 @@ export const watchTargetSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('movie') }),
 	z.object({ type: z.literal('book') })
 ]);
+
+/** Stores the title if needed, loading books, series and manga in the user's book language. */
+export function ensureTitleFor(user: SessionUser, kind: TitleKind, id: string) {
+	return ensureTitle(kind, id, READ_KINDS.includes(kind) ? readLocale(user.prefs) : undefined);
+}

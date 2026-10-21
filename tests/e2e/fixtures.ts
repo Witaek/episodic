@@ -95,3 +95,28 @@ export const season: Season = {
 		rating: null
 	}))
 };
+
+/** A book series (Wikidata + Open Library), in the shape the reading service caches. */
+export const SERIES_ID = '900100';
+export const SERIES_NAME = 'Fixture Saga';
+export const seriesBundle = {
+	info: {
+		qid: SERIES_ID,
+		name: SERIES_NAME,
+		description: 'A test series of three novels',
+		authors: ['Ada Fixture'],
+		members: [1, 2, 3].map((n) => ({
+			qid: `90010${n}`,
+			ordinal: String(n),
+			label: `Saga book ${n}`,
+			work: `90010${n}`,
+			published: `200${n}-01-01`
+		}))
+	},
+	volumes: [1, 2, 3].map((n) => [
+		`90010${n}`,
+		{ title: `Saga book ${n}`, cover: poster, pages: 300, year: 2000 + n, edition: null }
+	]),
+	overview: 'Three books to track like a show.',
+	genres: ['Fantasy']
+};

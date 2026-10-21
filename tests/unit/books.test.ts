@@ -20,6 +20,7 @@ const library = await import('../../src/lib/server/services/library');
 const tracking = await import('../../src/lib/server/services/tracking');
 const { listHistory } = await import('../../src/lib/server/services/history');
 const { watchStats } = await import('../../src/lib/server/services/stats');
+const { readingStats } = await import('../../src/lib/server/services/reading-stats');
 const portability = await import('../../src/lib/server/services/portability');
 
 describe('open library mapping', () => {
@@ -36,7 +37,7 @@ describe('open library mapping', () => {
 				ratings_average: 4.52
 			})
 		).toMatchObject({
-			href: '/title/book/21745884',
+			href: '/read/book/21745884',
 			mediaType: 'book',
 			year: 2021,
 			rating: 9,
@@ -134,8 +135,10 @@ describe('reading', () => {
 		).toThrow();
 
 		const stats = watchStats(userId, 'all');
-		expect(stats.totals).toMatchObject({ books: 2, minutes: 0, episodes: 0, movies: 0 });
+		expect(stats.totals).toMatchObject({ minutes: 0, episodes: 0, movies: 0 });
 		expect(stats.genres).toEqual([]);
+		const reading = readingStats(userId, {}, 'all');
+		expect(reading.totals).toMatchObject({ books: 2, pages: 992, volumes: 0 });
 	});
 
 	it('round-trips through export', () => {

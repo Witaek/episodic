@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { LIBRARY_STATUSES } from '$lib/media-types/types';
 import { getDb } from '../db/client';
 import { activityEvents, episodes, importJobs, libraryEntries, titles, users } from '../db/schema';
+import { restoreCollection } from './book-series';
 import { ensureTitle } from './titles';
 
 /**
@@ -11,8 +12,18 @@ import { ensureTitle } from './titles';
  */
 
 const titleRef = z.object({
-	provider: z.enum(['tmdb', 'anilist', 'openlibrary']),
-	kind: z.enum(['movie', 'tv', 'anime', 'book']),
+	provider: z.enum(['tmdb', 'anilist', 'openlibrary', 'wikidata', 'local']),
+	kind: z.enum(['movie', 'tv', 'anime', 'book', 'series', 'collection', 'manga']),
+	// Hand-made series can't be fetched again: their books travel with them.
+	volumes: z
+		.array(
+			z.object({
+				number: z.number().int(),
+				name: z.string().nullable(),
+				work: z.string().nullable()
+			})
+		)
+		.optional(),
 	externalId: z.string().regex(/^\d+$/),
 	name: z.string()
 });
@@ -35,7 +46,9 @@ export const exportSchema = z.object({
 			notes: z.string().nullable(),
 			addedAt: z.string(),
 			updatedAt: z.string(),
-			lastActivityAt: z.string().nullable()
+			lastActivityAt: z.string().nullable(),
+			// Reading progress: page, book of a series, chosen edition.
+			progress: z.record(z.string(), z.unknown()).nullable().optional()
 		})
 	),
 	activity: z.array(
@@ -55,12 +68,32 @@ export type EpisodicExport = z.infer<typeof exportSchema>;
 export function exportUserData(userId: number): EpisodicExport {
 	const db = getDb();
 	const user = db.select().from(users).where(eq(users.id, userId)).get()!;
-	const ref = (t: typeof titles.$inferSelect) => ({
-		provider: t.provider as 'tmdb' | 'anilist' | 'openlibrary',
-		kind: t.kind,
-		externalId: t.externalId,
-		name: t.name
-	});
+	// Hand-made series carry their books (once per title, reused for every reference).
+	const volumesOf = new Map<
+		number,
+		{ number: number; name: string | null; work: string | null }[]
+	>();
+	const ref = (t: typeof titles.$inferSelect) => {
+		if (t.kind === 'collection' && !volumesOf.has(t.id)) {
+			volumesOf.set(
+				t.id,
+				db
+					.select()
+					.from(episodes)
+					.where(eq(episodes.titleId, t.id))
+					.orderBy(episodes.number)
+					.all()
+					.map((e) => ({ number: e.number, name: e.name, work: e.externalId }))
+			);
+		}
+		return {
+			provider: t.provider as 'tmdb' | 'anilist' | 'openlibrary' | 'wikidata' | 'local',
+			kind: t.kind,
+			externalId: t.externalId,
+			name: t.name,
+			...(t.kind === 'collection' ? { volumes: volumesOf.get(t.id) } : {})
+		};
+	};
 
 	const library = db
 		.select({ entry: libraryEntries, title: titles })
@@ -76,7 +109,8 @@ export function exportUserData(userId: number): EpisodicExport {
 			notes: entry.notes,
 			addedAt: entry.addedAt.toISOString(),
 			updatedAt: entry.updatedAt.toISOString(),
-			lastActivityAt: entry.lastActivityAt?.toISOString() ?? null
+			lastActivityAt: entry.lastActivityAt?.toISOString() ?? null,
+			progress: entry.progress ?? null
 		}));
 
 	const activity = db
@@ -170,7 +204,10 @@ export async function runImport(
 	try {
 		for (const group of groups.values()) {
 			try {
-				const title = await ensureTitle(group.title.kind, group.title.externalId);
+				const title =
+					group.title.kind === 'collection'
+						? await restoreCollection(group.title.name, group.title.volumes ?? [])
+						: await ensureTitle(group.title.kind, group.title.externalId);
 				const result = importTitle(userId, title.id, group);
 				addedEntries += result.entry;
 				addedEvents += result.events;
@@ -207,7 +244,8 @@ function importTitle(
 				favorite: e.favorite,
 				notes: e.notes,
 				updatedAt: new Date(e.updatedAt),
-				lastActivityAt: e.lastActivityAt ? new Date(e.lastActivityAt) : null
+				lastActivityAt: e.lastActivityAt ? new Date(e.lastActivityAt) : null,
+				...(e.progress ? { progress: e.progress } : {})
 			};
 			tx.insert(libraryEntries)
 				.values({ userId, titleId, addedAt: new Date(e.addedAt), ...values })

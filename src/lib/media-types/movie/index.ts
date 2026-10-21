@@ -2,6 +2,7 @@ import { VIDEO_STATUS_LABELS, type MediaTypeDefinition } from '../types';
 
 export const movie: MediaTypeDefinition = {
 	id: 'movie',
+	section: 'watch',
 	label: 'Movie',
 	pluralLabel: 'Movies',
 	searchFilter: 'movie',

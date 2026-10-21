@@ -19,7 +19,6 @@
 	const tiles = $derived([
 		{ label: 'Episodes', value: t.episodes.toLocaleString() },
 		{ label: 'Movies', value: t.movies.toLocaleString() },
-		{ label: 'Books read', value: t.books.toLocaleString() },
 		{ label: 'Titles', value: t.titles.toLocaleString() },
 		{ label: 'Completed', value: t.completed.toLocaleString() }
 	]);
@@ -47,7 +46,7 @@
 		</nav>
 	</div>
 
-	{#if t.episodes + t.movies + t.books === 0}
+	{#if t.episodes + t.movies === 0}
 		<div class="grid place-items-center py-20 text-center">
 			<div class="mb-4 grid size-14 place-items-center rounded-2xl bg-surface-2 text-muted">
 				<ChartColumn class="size-7" />

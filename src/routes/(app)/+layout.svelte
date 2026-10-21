@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { navigating } from '$app/state';
+	import { navigating, page } from '$app/state';
+	import { rememberSection, sectionFor } from '$lib/section';
 	import { Toaster } from 'svelte-sonner';
 	import { onMount } from 'svelte';
 	import AppNav from '$lib/components/AppNav.svelte';
@@ -8,6 +9,13 @@
 	let { data, children } = $props();
 
 	onMount(listenForInstallPrompt);
+
+	// Watch or Read: from the page, or (shared pages) the side you came from.
+	const section = $derived(sectionFor(page.url, data.remembered));
+	$effect(() => {
+		document.documentElement.dataset.section = section;
+		rememberSection(section);
+	});
 
 	// Show the progress bar only for navigations that take a moment.
 	let showProgress = $state(false);
@@ -31,7 +39,7 @@
 	</div>
 {/if}
 
-<AppNav />
+<AppNav {section} />
 
 <div class="min-h-dvh pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0 lg:pl-60">
 	{@render children()}

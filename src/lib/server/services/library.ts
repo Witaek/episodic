@@ -1,5 +1,6 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
-import { titleHref } from '$lib/catalog/types';
+import { and, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { READ_MEDIA_TYPES, titleHref } from '$lib/catalog/types';
+import type { Section } from '$lib/section';
 import type { LibraryStatus } from '$lib/media-types/types';
 import {
 	EMPTY_STATE,
@@ -11,7 +12,7 @@ import {
 } from '$lib/tracking/types';
 import type { UserPrefs } from '../db/schema';
 import { getDb } from '../db/client';
-import { activityEvents, libraryEntries, titles } from '../db/schema';
+import { activityEvents, episodes, libraryEntries, titles } from '../db/schema';
 import { computeProgress, progressForTitles, watchCounts } from './progress';
 import { editionOf } from './books';
 import { titleEpisodes, type TitleRow } from './titles';
@@ -21,6 +22,18 @@ export type LibraryEntry = typeof libraryEntries.$inferSelect;
 /** Movies and books are tracked as a whole (no episodes). */
 export function isWholeTitle(title: Pick<TitleRow, 'mediaType'>): boolean {
 	return title.mediaType === 'movie' || title.mediaType === 'book';
+}
+
+/** Series: the page reached in the book being read, and that book's page count. */
+export function seriesReading(
+	entry: LibraryEntry | undefined,
+	list: { seasonNumber: number; number: number; pages: number | null }[]
+): ReadingProgress | null {
+	const unit = entry?.progress?.unit as { season: number; number: number } | undefined;
+	const page = entry?.progress?.page;
+	if (!unit || typeof page !== 'number') return null;
+	const book = list.find((e) => e.seasonNumber === unit.season && e.number === unit.number);
+	return { page, pages: book?.pages ?? null, unit };
 }
 
 export function readingOf(
@@ -109,7 +122,7 @@ export function getUserTitleState(
 		progress: computeProgress(list, new Set(counts.keys()), {
 			includeSpecials: prefs.includeSpecials
 		}),
-		reading: null,
+		reading: title.mediaType === 'bookseries' ? seriesReading(entry, list) : null,
 		lastActivityAt: entry?.lastActivityAt?.toISOString() ?? null
 	};
 }
@@ -120,11 +133,18 @@ export type LibrarySort = 'activity' | 'added' | 'name';
 export function listLibrary(
 	userId: number,
 	prefs: UserPrefs,
-	{ statuses, sort = 'activity' }: { statuses?: LibraryStatus[]; sort?: LibrarySort } = {}
+	{
+		statuses,
+		sort = 'activity',
+		section
+	}: { statuses?: LibraryStatus[]; sort?: LibrarySort; section?: Section } = {}
 ): LibraryItem[] {
 	const db = getDb();
 	const conditions = [eq(libraryEntries.userId, userId)];
 	if (statuses?.length) conditions.push(inArray(libraryEntries.status, statuses));
+	// Watch and Read keep separate libraries.
+	if (section === 'read') conditions.push(inArray(titles.mediaType, [...READ_MEDIA_TYPES]));
+	if (section === 'watch') conditions.push(notInArray(titles.mediaType, [...READ_MEDIA_TYPES]));
 
 	const order =
 		sort === 'name'
@@ -166,14 +186,40 @@ export function listLibrary(
 			addedAt: entry.addedAt.toISOString(),
 			lastActivityAt: entry.lastActivityAt?.toISOString() ?? null,
 			progress: progress.get(title.id) ?? null,
-			reading: title.mediaType === 'book' ? readingOf(entry, title) : null
+			reading:
+				title.mediaType === 'book'
+					? readingOf(entry, title)
+					: title.mediaType === 'bookseries'
+						? seriesReading(entry, unitPages(title.id, entry))
+						: null
 		};
 	});
 }
 
+/** The page count of the book a series entry is being read in, for its progress bar. */
+function unitPages(titleId: number, entry: LibraryEntry) {
+	const unit = entry.progress?.unit as { season: number; number: number } | undefined;
+	if (!unit) return [];
+	return getDb()
+		.select({ seasonNumber: episodes.seasonNumber, number: episodes.number, pages: episodes.pages })
+		.from(episodes)
+		.where(
+			and(
+				eq(episodes.titleId, titleId),
+				eq(episodes.seasonNumber, unit.season),
+				eq(episodes.number, unit.number)
+			)
+		)
+		.all();
+}
+
 /** Shows you're watching that have an aired episode waiting, most recently active first. */
-export function upNext(userId: number, prefs: UserPrefs): LibraryItem[] {
-	return listLibrary(userId, prefs, { statuses: ['in_progress'] }).filter(
+export function upNext(
+	userId: number,
+	prefs: UserPrefs,
+	section: Section = 'watch'
+): LibraryItem[] {
+	return listLibrary(userId, prefs, { statuses: ['in_progress'], section }).filter(
 		(item) => item.progress?.nextUp
 	);
 }

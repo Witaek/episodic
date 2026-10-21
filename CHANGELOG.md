@@ -5,6 +5,38 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-21
+
+Reading gets a side of its own. See [the reading guide](docs/reading.md).
+
+### Added
+
+- **Watch | Read switch.** Books and manga have their own Reading home, Search, Shelf, Stats and
+  History, with an amber, serif look. The app remembers which side you were on.
+- **Book series tracked like shows.** Search shows one card per series; the series page lists its
+  books in order, you're _Reading_ the series until the last book, and the next book is one tap
+  away on the Reading screen. Books you tracked on their own move into their series.
+- **Manga**: volumes and chapters (AniList and MangaDex), a shelf of volume covers, "mark volume
+  read" and a catch-up mode.
+- **Adaptations**: films and series made from a book, anime made from a manga, and "based on" on
+  anime and film pages.
+- **Yearly reading goal**, with your pace on the Reading screen.
+- **Barcode scanning**: scan or type an ISBN to find that exact edition and its series.
+- **Series you group yourself** for books the catalog doesn't know as a series.
+- Reading stats: books, manga volumes, chapters, pages, streaks, genres.
+- Export and restore now include reading progress and hand-made series.
+
+### Changed
+
+- Books moved out of the Watch side: the main search, Library, History, Stats and Home only show
+  shows, anime and movies. Book links moved from `/title/book/…` to `/read/book/…` (old links
+  redirect).
+
+### Fixed
+
+- A page whose loading was cut off (for example by leaving it quickly) could crash the server
+  since 1.5.0's compression.
+
 ## [1.5.0] - 2026-10-21
 
 Faster, especially on phones.

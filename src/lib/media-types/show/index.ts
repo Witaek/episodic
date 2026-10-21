@@ -2,6 +2,7 @@ import { formatEpisodeCode, VIDEO_STATUS_LABELS, type MediaTypeDefinition } from
 
 export const show: MediaTypeDefinition = {
 	id: 'show',
+	section: 'watch',
 	label: 'TV show',
 	pluralLabel: 'TV shows',
 	searchFilter: 'tv',

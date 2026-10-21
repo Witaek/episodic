@@ -5,13 +5,13 @@
 <h1 align="center">Episodic</h1>
 
 <p align="center">
-  A self-hosted tracker for TV shows, anime, movies and books.<br />
+  A self-hosted tracker for TV shows, anime, movies, books and manga.<br />
   Know exactly where you are in every show, and when the next episode airs.
 </p>
 
 ---
 
-> **Status: v1.0.** Everything in the feature list below works. See the [roadmap](#roadmap) for
+> **Status: v2.0.** Everything in the feature list below works. See the [roadmap](#roadmap) for
 > what's next.
 
 ## Features
@@ -30,11 +30,18 @@
 - **Calendar**: a month view of what's airing, plus an iCal feed for your phone's calendar.
 - **Notifications** when new episodes come out, on your phone (Web Push), ntfy or Discord.
 - **Stats**: watch time, streaks, monthly chart, top genres and shows.
-- **Books**: search Open Library in English or French, track Want to read / Reading / Read, and
-  your current page in the edition you're reading.
 - **Anime franchises**: movies are grouped with their show (Demon Slayer and its movies).
+- **A Read side of its own** ([guide](docs/reading.md)): books, book series and manga, with their
+  own search, shelf, stats and look. Switch with **Watch | Read**.
+  - **Series tracked like shows**: Harry Potter is one title with seven books; you're _Reading_ it
+    until the last one, and the next book is always one tap away.
+  - **Manga** by volume and chapter, with a shelf of volume covers.
+  - **Adaptations**: the films made from a book, the anime made from a manga, and the other way
+    round.
+  - **Yearly reading goal**, **barcode scanning** of ISBNs, page progress in the edition you own,
+    and series you group yourself.
 
-Later: manga, where-to-watch, and Jellyfin/Plex auto-tracking.
+Later: where-to-watch, and Jellyfin/Plex auto-tracking.
 
 ## Quick start
 
@@ -62,6 +69,7 @@ Open `http://<your-server>:8787`.
 | [Deploying on CasaOS](docs/deploy-casaos.md)           | Step-by-step install from the CasaOS dashboard                     |
 | [Deploying with Docker Compose](docs/deploy-docker.md) | Any Linux server or NAS, pulling the image or building it yourself |
 | [HTTPS with Tailscale](docs/https-tailscale.md)        | Secure access from your phone, and installing the app              |
+| [Reading](docs/reading.md)                             | Books, series and manga: the Read side, goal, barcode scanning     |
 | [Configuration](docs/configuration.md)                 | Every environment variable                                         |
 | [Development](docs/development.md)                     | Running from source, tests, releasing                              |
 | [Architecture](docs/architecture.md)                   | How the code is organized, and how to extend it                    |
@@ -76,10 +84,12 @@ Open `http://<your-server>:8787`.
 - [x] **Phase 5**: backups, export and restore, settings (**v1.0**)
 - [x] **Phase 6**: calendar view, iCal feed, notifications, stats
 - [x] **Books**: Open Library search, reading statuses, page progress
-- [ ] Later: manga, where to watch, spoiler mode, Jellyfin/Plex/Trakt integrations
+- [x] **Read side (v2.0)**: book series and manga tracked like shows, adaptations, goal, scanning
+- [ ] Later: where to watch, spoiler mode, Jellyfin/Plex/Trakt integrations
 
 ## Credits
 
 Metadata comes from [TMDB](https://www.themoviedb.org), [AniList](https://anilist.co) and
-[TVmaze](https://www.tvmaze.com) and [Open Library](https://openlibrary.org). This product uses the TMDB API but is not endorsed or certified by
+[TVmaze](https://www.tvmaze.com), [Open Library](https://openlibrary.org),
+[Wikidata](https://www.wikidata.org) and [MangaDex](https://mangadex.org). This product uses the TMDB API but is not endorsed or certified by
 TMDB.

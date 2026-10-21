@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import type { WatchResponse } from '$lib/tracking/types';
 import {
+	ensureTitleFor,
 	handleErrors,
 	parseBody,
 	parseTitleParams,
@@ -10,7 +11,6 @@ import {
 } from '$lib/server/api';
 import { getUserTitleState } from '$lib/server/services/library';
 import { rememberEdition } from '$lib/server/services/books';
-import { ensureTitle } from '$lib/server/services/titles';
 import { watch } from '$lib/server/services/tracking';
 import type { RequestHandler } from './$types';
 
@@ -25,7 +25,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	const { kind, id } = parseTitleParams(params);
 	const input = await parseBody(request, body);
 	return handleErrors(async () => {
-		const title = await ensureTitle(kind, id);
+		const title = await ensureTitleFor(user, kind, id);
 		const watchedAt = input.watchedAt ? new Date(input.watchedAt) : undefined;
 		if (watchedAt && watchedAt.getTime() > Date.now() + 60_000) {
 			return json({ error: "The watch date can't be in the future" }, { status: 400 });

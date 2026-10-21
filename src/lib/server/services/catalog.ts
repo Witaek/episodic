@@ -13,6 +13,13 @@ import { config } from '../config';
 import { mappingsByAnilistIds } from '../providers/anime-mapping';
 import { ProviderError } from '../providers/http';
 import { showsForAnimeMovies } from './franchise';
+import {
+	collectionTitle,
+	mangaSeason,
+	mangaTitleDetails,
+	seriesSeason,
+	seriesTitle
+} from './reading';
 import { anilist, openlibrary, tmdb, type LocaleOptions } from '../providers';
 import { getEdition, searchBooks } from '../providers/openlibrary';
 
@@ -157,6 +164,15 @@ export async function getTitle(
 	locale = defaultLocale(),
 	{ fresh }: FetchOptions = {}
 ): Promise<TitleLookup> {
+	// Book series, manga and hand-made collections (cached inside the reading service).
+	if (kind === 'series') return { title: await seriesTitle(id, locale.language, fresh) };
+	if (kind === 'manga') return { title: await mangaTitleDetails(id, locale.language, fresh) };
+	if (kind === 'collection') {
+		const collection = collectionTitle(id);
+		if (!collection) throw new ProviderError('Collection not found', 'local', 404);
+		return { title: collection.details };
+	}
+
 	if (kind === 'book') {
 		const title = await cached(
 			`title:openlibrary:${id}`,
@@ -204,6 +220,13 @@ export async function getSeason(
 	locale = defaultLocale(),
 	{ fresh }: FetchOptions = {}
 ): Promise<Season> {
+	if (kind === 'series') return seriesSeason(id, season, locale.language);
+	if (kind === 'manga') return mangaSeason(id, season, locale.language);
+	if (kind === 'collection') {
+		const collection = collectionTitle(id);
+		if (!collection) throw new ProviderError('Collection not found', 'local', 404);
+		return collection.season;
+	}
 	if (kind === 'anime') {
 		return cached(
 			`season:anilist:${id}`,

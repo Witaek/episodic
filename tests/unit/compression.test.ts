@@ -62,4 +62,54 @@ describe('compression', () => {
 		expect(first).not.toBe('timeout');
 		end();
 	});
+
+	it('survives the browser going away mid-stream', async () => {
+		let push!: (chunk: string) => void;
+		const body = new ReadableStream<Uint8Array>({
+			start(controller) {
+				push = (chunk) => {
+					// The page stream may already be cancelled too; that's fine.
+					try {
+						controller.enqueue(new TextEncoder().encode(chunk));
+					} catch {
+						/* cancelled */
+					}
+				};
+			}
+		});
+		const response = compress(
+			req('br'),
+			new Response(body, { headers: { 'content-type': 'text/html' } })
+		);
+		const reader = response.body!.getReader();
+		push('<p>part</p>'.repeat(200));
+		await reader.read();
+		await reader.cancel();
+		// Compressor output after the cancel used to throw "Controller is already closed" from a
+		// zlib event, which crashed the server (Vitest fails the run on such uncaught errors).
+		push('<p>late</p>'.repeat(200));
+		await new Promise((r) => setTimeout(r, 50));
+	});
+
+	it('reports a failing page as a stream error instead of crashing', async () => {
+		let fail!: (error: Error) => void;
+		const body = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode('<p>start</p>'.repeat(200)));
+				fail = (error) => controller.error(error);
+			}
+		});
+		const response = compress(
+			req('gzip'),
+			new Response(body, { headers: { 'content-type': 'text/html' } })
+		);
+		const reader = response.body!.getReader();
+		await reader.read();
+		fail(new Error('boom'));
+		await expect(
+			(async () => {
+				for (;;) if ((await reader.read()).done) return;
+			})()
+		).rejects.toThrow('boom');
+	});
 });

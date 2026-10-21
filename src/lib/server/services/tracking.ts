@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { isReadType } from '$lib/catalog/types';
 import type { WatchTarget } from '$lib/tracking/types';
 import { getDb } from '../db/client';
 import { activityEvents, episodes, libraryEntries, type UserPrefs } from '../db/schema';
@@ -84,7 +85,7 @@ export function watch(
 				userId,
 				titleId: title.id,
 				unitId: null,
-				action: title.mediaType === 'book' ? 'read' : 'watched',
+				action: isReadType(title.mediaType) ? 'read' : 'watched',
 				occurredAt: watchedAt,
 				source,
 				isRepeat: plays > 0
@@ -281,5 +282,43 @@ export function setReadingProgress(
 
 	const finished = auto && !!pages && clamped >= pages && entry?.status !== 'completed';
 	if (finished) watch(userId, title, { type: 'book' }, prefs, { rewatch: true });
+	return { finished };
+}
+
+/**
+ * Series: saves the page reached in one of its books. Starting moves the series to Reading;
+ * reaching the book's last page marks that book read.
+ */
+export function setVolumeProgress(
+	userId: number,
+	title: TitleRow,
+	unit: { season: number; number: number },
+	page: number,
+	prefs: UserPrefs
+): { finished: boolean } {
+	const episode = titleEpisodes(title.id).find(
+		(e) => e.seasonNumber === unit.season && e.number === unit.number
+	);
+	if (!episode) throw new TrackingError('Book not found in this series');
+	const clamped = Math.max(0, Math.min(Math.round(page), episode.pages ?? Number.MAX_SAFE_INTEGER));
+	const entry = getEntry(userId, title.id);
+	const auto = prefs.autoStatus !== false;
+	if (!entry) setStatus(userId, title.id, clamped > 0 ? 'in_progress' : 'planned');
+	else if (auto && clamped > 0 && entry.status === 'planned')
+		setStatus(userId, title.id, 'in_progress');
+
+	getDb()
+		.update(libraryEntries)
+		.set({
+			progress: { ...(getEntry(userId, title.id)?.progress ?? {}), page: clamped, unit },
+			lastActivityAt: new Date(),
+			updatedAt: new Date()
+		})
+		.where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.titleId, title.id)))
+		.run();
+
+	const alreadyRead = watchCounts(userId, [title.id]).has(episode.id);
+	const finished = auto && !!episode.pages && clamped >= episode.pages && !alreadyRead;
+	if (finished) watch(userId, title, { type: 'episode', ...unit }, prefs);
 	return { finished };
 }

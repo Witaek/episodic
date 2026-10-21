@@ -77,6 +77,8 @@ export interface UserPrefs {
 	notifyWatchlist?: boolean;
 	/** Language last used for book search ('en' | 'fr'). */
 	bookLanguage?: string;
+	/** Yearly reading goal: number of books. */
+	readingGoal?: { year: number; books: number };
 }
 
 export const users = sqliteTable('users', {
@@ -185,6 +187,8 @@ export const episodes = sqliteTable(
 		/** Exact air time (UTC ISO), when known. */
 		airAt: text('air_at'),
 		runtime: integer('runtime'),
+		/** Book volumes: page count. */
+		pages: integer('pages'),
 		externalId: text('external_id')
 	},
 	(t) => [uniqueIndex('episodes_title_number_idx').on(t.titleId, t.seasonNumber, t.number)]

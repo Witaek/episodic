@@ -15,6 +15,7 @@ import { stopJobs } from '$lib/server/jobs/scheduler';
 import { compress } from '$lib/server/compression';
 import { isRequestOriginAllowed } from '$lib/server/security';
 import { THEME_COLORS, THEME_COOKIE, parseTheme } from '$lib/theme';
+import { SECTION_COOKIE, parseSection, sectionFor } from '$lib/section';
 
 export const init: ServerInit = async () => {
 	const { databasePath, APP_URL, TMDB_ACCESS_TOKEN, ADMIN_USERNAME, ADMIN_PASSWORD, DISABLE_JOBS } =
@@ -87,10 +88,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const theme = parseTheme(event.cookies.get(THEME_COOKIE));
+	const remembered = parseSection(event.cookies.get(SECTION_COOKIE));
+	// Opening the app goes back to the side (Watch or Read) you were last on.
+	if (path === '/' && remembered === 'read' && !event.url.searchParams.has('section')) {
+		redirect(303, '/read');
+	}
+	const section = sectionFor(event.url, remembered);
 	const response = await resolve(event, {
 		transformPageChunk: ({ html }) =>
 			html
 				.replace('%episodic.theme%', theme)
+				.replace('%episodic.section%', section)
 				.replace('%episodic.themeColor%', THEME_COLORS[theme === 'light' ? 'light' : 'dark'])
 	});
 	return compress(event.request, response);

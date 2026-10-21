@@ -90,9 +90,12 @@ export async function refreshTitle(title: TitleRow, now = new Date()): Promise<T
 		!title.fullRefreshedAt ||
 		now.getTime() - title.fullRefreshedAt.getTime() > FULL_REFRESH_INTERVAL;
 	const previous = title.refreshedAt;
+	const lang = title.externalIds.lang;
 	const updated = await syncTitle(title.kind, title.externalId, {
 		fresh: true,
-		seasons: full ? 'all' : 'recent'
+		seasons: full ? 'all' : 'recent',
+		// Book series and manga keep the language they were added in.
+		locale: lang ? { language: lang, region: 'US' } : undefined
 	});
 	if (
 		updated.status !== 'ended' &&

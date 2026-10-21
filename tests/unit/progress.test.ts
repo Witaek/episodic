@@ -21,6 +21,7 @@ const ep = (
 	airDate,
 	airAt,
 	runtime: 45,
+	pages: null,
 	externalId: null
 });
 

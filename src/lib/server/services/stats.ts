@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { titleHref, type Image } from '$lib/catalog/types';
+import { isReadType, titleHref, type Image } from '$lib/catalog/types';
 import { getDb } from '../db/client';
 import { activityEvents, episodes, libraryEntries, titles } from '../db/schema';
 import { localDateString } from './progress';
@@ -13,8 +13,6 @@ export interface WatchStats {
 		minutes: number;
 		episodes: number;
 		movies: number;
-		/** Books finished. */
-		books: number;
 		titles: number;
 		completed: number;
 		currentStreak: number;
@@ -83,11 +81,10 @@ export function watchStats(userId: number, range: StatsRange, now = new Date()):
 		.where(eq(activityEvents.userId, userId))
 		.all();
 
+	// Reading has its own stats (see reading-stats.ts).
+	const watched = rows.filter((r) => !isReadType(r.mediaType));
 	const yearStart = new Date(now.getFullYear(), 0, 1);
-	const inYear = range === 'all' ? rows : rows.filter((r) => r.occurredAt >= yearStart);
-	// Books are counted, not timed: watch time, the chart and genres cover video only.
-	const books = inYear.filter((r) => r.mediaType === 'book').length;
-	const inRange = inYear.filter((r) => r.mediaType !== 'book');
+	const inRange = range === 'all' ? watched : watched.filter((r) => r.occurredAt >= yearStart);
 
 	const category = (r: (typeof rows)[number]): StatsCategory =>
 		r.mediaType === 'movie' ? 'movie' : r.isAnime ? 'anime' : 'show';
@@ -101,8 +98,7 @@ export function watchStats(userId: number, range: StatsRange, now = new Date()):
 		months.push({ month: monthKey(date), minutes: { show: 0, anime: 0, movie: 0 } });
 	}
 	const monthIndex = new Map(months.map((m, i) => [m.month, i]));
-	for (const r of rows) {
-		if (r.mediaType === 'book') continue;
+	for (const r of watched) {
 		const i = monthIndex.get(monthKey(r.occurredAt));
 		if (i !== undefined) months[i].minutes[category(r)] += minutesOf(r);
 	}
@@ -142,7 +138,7 @@ export function watchStats(userId: number, range: StatsRange, now = new Date()):
 		).length;
 
 	const { current, longest } = streaks(
-		inYear.map((r) => localDateString(r.occurredAt)),
+		inRange.map((r) => localDateString(r.occurredAt)),
 		localDateString(now)
 	);
 
@@ -152,7 +148,6 @@ export function watchStats(userId: number, range: StatsRange, now = new Date()):
 			minutes,
 			episodes: episodesCount,
 			movies,
-			books,
 			titles: perTitle.size,
 			completed: completedInRange,
 			currentStreak: current,

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { CalendarClock, Ellipsis, Repeat, Trash2 } from '@lucide/svelte';
 	import { DropdownMenu } from 'bits-ui';
+	import { isReadType } from '$lib/catalog/types';
+	import { mediaType } from '$lib/media-types/registry';
 	import { formatEpisodeCode } from '$lib/media-types/types';
 	import type { HistoryItem } from '$lib/tracking/types';
 	import Img from './Img.svelte';
@@ -13,6 +15,7 @@
 	}
 
 	let { item, onedit, ondelete }: Props = $props();
+	const reading = $derived(isReadType(item.title.mediaType));
 
 	const time = $derived(
 		new Date(item.occurredAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
@@ -43,12 +46,12 @@
 			<p class="line-clamp-1 text-sm text-muted">
 				{#if item.episode}
 					<span class="font-medium text-fg/80"
-						>{formatEpisodeCode({
+						>{(reading ? mediaType(item.title.mediaType).formatUnit : formatEpisodeCode)({
 							season: item.episode.seasonNumber,
 							number: item.episode.number
 						})}</span
 					>{item.episode.name ? ` · ${item.episode.name}` : ''}
-				{:else if item.title.mediaType === 'book'}
+				{:else if reading}
 					Finished reading
 				{:else}
 					Movie
@@ -61,7 +64,7 @@
 						class="inline-flex items-center gap-1 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold"
 					>
 						<Repeat class="size-3" />
-						{item.title.mediaType === 'book' ? 'Reread' : 'Rewatch'}
+						{reading ? 'Reread' : 'Rewatch'}
 					</span>
 				{/if}
 			</p>

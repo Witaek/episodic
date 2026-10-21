@@ -47,15 +47,34 @@ function compressStream(
 			? (zip as BrotliCompress).flush(constants.BROTLI_OPERATION_FLUSH)
 			: (zip as Gzip).flush(constants.Z_SYNC_FLUSH);
 
+	const reader = body.getReader();
+	// Once the browser goes away (or the page fails), late compressor output must be dropped:
+	// enqueueing on a closed stream throws inside a zlib event and would crash the server.
+	let finished = false;
+	const stop = () => {
+		finished = true;
+		zip.destroy();
+	};
+
 	return new ReadableStream<Uint8Array>({
 		start(controller) {
-			zip.on('data', (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)));
-			zip.on('end', () => controller.close());
-			zip.on('error', (error) => controller.error(error));
-			const reader = body.getReader();
+			zip.on('data', (chunk: Buffer) => {
+				if (!finished) controller.enqueue(new Uint8Array(chunk));
+			});
+			zip.on('end', () => {
+				if (finished) return;
+				finished = true;
+				controller.close();
+			});
+			zip.on('error', (error) => {
+				if (finished) return;
+				finished = true;
+				controller.error(error);
+			});
 			(async () => {
 				for (;;) {
 					const { done, value } = await reader.read();
+					if (finished) return;
 					if (done) {
 						zip.end();
 						return;
@@ -63,7 +82,15 @@ function compressStream(
 					zip.write(value);
 					flush();
 				}
-			})().catch((error) => controller.error(error));
+			})().catch((error) => {
+				if (finished) return;
+				stop();
+				controller.error(error);
+			});
+		},
+		cancel(reason) {
+			stop();
+			return reader.cancel(reason);
 		}
 	});
 }

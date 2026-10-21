@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { relativeDay } from '$lib/format';
+	import { isReadType } from '$lib/catalog/types';
+	import { mediaType } from '$lib/media-types/registry';
 	import { formatEpisodeCode } from '$lib/media-types/types';
 	import type { UpcomingItem } from '$lib/tracking/types';
 	import Img from './Img.svelte';
@@ -25,9 +27,16 @@
 	<div class="min-w-0">
 		<p class="line-clamp-1 text-sm font-semibold">{item.name}</p>
 		<p class="text-xs text-muted">
-			{item.episode
-				? formatEpisodeCode({ season: item.episode.seasonNumber, number: item.episode.number })
-				: 'Release'}
+			{#if item.episode && isReadType(item.mediaType)}
+				{mediaType(item.mediaType).formatUnit({
+					season: item.episode.seasonNumber,
+					number: item.episode.number
+				})}{item.episode.name ? ` · ${item.episode.name}` : ''}
+			{:else}
+				{item.episode
+					? formatEpisodeCode({ season: item.episode.seasonNumber, number: item.episode.number })
+					: 'Release'}
+			{/if}
 		</p>
 		<p class="mt-0.5 text-xs font-medium text-accent first-letter:uppercase">{when}</p>
 	</div>

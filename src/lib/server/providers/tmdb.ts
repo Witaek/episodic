@@ -288,6 +288,7 @@ export function mapDetails(
 				: null,
 		runtime: raw.runtime ?? raw.episode_run_time?.[0] ?? null,
 		rating: score(raw.vote_average, raw.vote_count),
+		votes: raw.vote_count ?? null,
 		certification: pickCertification(raw, locale.region),
 		companies: (raw.networks ?? raw.production_companies ?? []).map((c) => c.name).slice(0, 4),
 		cast,
@@ -349,7 +350,7 @@ function get<T>(path: string, params: Record<string, string | number | boolean>)
 	});
 }
 
-const SEARCH_PATHS: Record<Exclude<SearchFilter, 'anime' | 'book'>, string> = {
+const SEARCH_PATHS: Record<Exclude<SearchFilter, 'anime' | 'book' | 'manga'>, string> = {
 	all: '/search/multi',
 	tv: '/search/tv',
 	movie: '/search/movie'
@@ -365,7 +366,8 @@ export const tmdb = {
 	isConfigured: () => Boolean(config().TMDB_ACCESS_TOKEN),
 
 	async search(query: string, filter: SearchFilter, locale: LocaleOptions) {
-		const path = SEARCH_PATHS[filter === 'anime' || filter === 'book' ? 'tv' : filter];
+		const path =
+			SEARCH_PATHS[filter === 'anime' || filter === 'book' || filter === 'manga' ? 'tv' : filter];
 		const data = await get<{ results: RawListItem[] }>(path, {
 			query,
 			language: locale.language,

@@ -65,8 +65,13 @@ export function haptic(pattern: number | number[] = 12) {
 	if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate?.(pattern);
 }
 
-export function setReadingPage(ref: TitleRefLike, page: number) {
+export function setReadingPage(
+	ref: TitleRefLike,
+	page: number,
+	unit?: { season: number; number: number }
+) {
 	return call<{ finished: boolean; state: TitleUserState }>(url(ref, 'progress'), 'PUT', {
-		page
+		page,
+		...unit
 	});
 }

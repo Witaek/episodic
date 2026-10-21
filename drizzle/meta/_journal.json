@@ -57,6 +57,13 @@
       "when": 1792502496841,
       "tag": "0007_book_pages",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792542415765,
+      "tag": "0008_reading",
+      "breakpoints": true
     }
   ]
 }

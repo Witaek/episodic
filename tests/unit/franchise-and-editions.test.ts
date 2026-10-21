@@ -98,7 +98,7 @@ describe('book editions', () => {
 			}
 		});
 		expect(doc).toMatchObject({
-			href: '/title/book/82563?edition=19679484',
+			href: '/read/book/82563?edition=19679484',
 			name: "Harry Potter à l'école des sorciers",
 			originalName: "Harry Potter and the Philosopher's Stone",
 			poster: { url: 'https://covers.openlibrary.org/b/id/2-L.jpg' }

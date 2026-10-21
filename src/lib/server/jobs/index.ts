@@ -5,6 +5,7 @@ import { getDb } from '../db/client';
 import { jobRuns } from '../db/schema';
 import { mappingsAge, refreshAnimeMappings } from '../providers/anime-mapping';
 import { scheduledBackup } from '../services/backup';
+import { absorbAllBooks } from '../services/book-series';
 import { sendNewEpisodeNotifications } from '../services/notifications';
 import { refreshDueTitles } from '../services/refresh';
 import { registerJobs, type JobDefinition } from './scheduler';
@@ -29,6 +30,13 @@ export const jobs: JobDefinition[] = [
 			const count = await refreshAnimeMappings();
 			return `stored ${count} anime mappings`;
 		}
+	},
+	{
+		// Books tracked on their own that belong to a series are moved into the series.
+		name: 'books-into-series',
+		schedule: '45 4 * * *', // daily 04:45
+		runOnStart: true,
+		run: absorbAllBooks
 	},
 	{
 		name: 'notify-new-episodes',

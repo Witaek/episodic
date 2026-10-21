@@ -204,3 +204,63 @@ export const openlibrary = {
 		};
 	}
 } satisfies MetadataProvider;
+
+export interface VolumeInfo {
+	title: string;
+	cover: Image | null;
+	pages: number | null;
+	year: number | null;
+	/** Edition shown (in the requested language), digits. */
+	edition: string | null;
+}
+
+/**
+ * Cover, page count and (with `language`) the localized edition title for many works at once:
+ * one request for a whole series.
+ */
+export async function volumeInfo(
+	workIds: string[],
+	language?: BookLanguage
+): Promise<Map<string, VolumeInfo>> {
+	const result = new Map<string, VolumeInfo>();
+	for (let i = 0; i < workIds.length; i += 40) {
+		const batch = workIds.slice(i, i + 40);
+		const params = new URLSearchParams({
+			q: `key:(${batch.map((id) => `/works/OL${id}W`).join(' OR ')})`,
+			fields: `${FIELDS},editions,editions.key,editions.title,editions.cover_i,editions.number_of_pages`,
+			limit: String(batch.length)
+		});
+		if (language) params.set('lang', language);
+		const data = await get<{ docs: SearchDoc[] }>(`/search.json?${params}`);
+		for (const doc of data.docs) {
+			const id = workId(doc.key);
+			if (!id) continue;
+			const edition = doc.editions?.docs[0] as
+				{ key: string; title?: string; cover_i?: number; number_of_pages?: number } | undefined;
+			// Only trust the edition when it's in the requested language.
+			const useEdition = language && edition?.title;
+			result.set(id, {
+				title: (useEdition ? edition!.title : null) ?? doc.title,
+				cover: coverImage((useEdition ? edition!.cover_i : null) ?? doc.cover_i),
+				pages: (useEdition ? edition!.number_of_pages : null) ?? doc.number_of_pages_median ?? null,
+				year: doc.first_publish_year ?? null,
+				edition: useEdition && edition ? editionId(edition.key) : null
+			});
+		}
+	}
+	return result;
+}
+
+/** The work and edition for an ISBN (10 or 13 digits), for barcode scanning. */
+export async function findByIsbn(isbn: string): Promise<{ work: string; edition: string } | null> {
+	const clean = isbn.replace(/[^\dX]/gi, '');
+	if (clean.length !== 10 && clean.length !== 13) return null;
+	try {
+		const edition = await get<{ key: string; works?: { key: string }[] }>(`/isbn/${clean}.json`);
+		const work = edition.works?.[0] ? workId(edition.works[0].key) : null;
+		const editionDigits = editionId(edition.key);
+		return work && editionDigits ? { work, edition: editionDigits } : null;
+	} catch {
+		return null;
+	}
+}

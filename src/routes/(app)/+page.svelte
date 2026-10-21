@@ -5,6 +5,7 @@
 	import AiringCard from '$lib/components/AiringCard.svelte';
 	import Img from '$lib/components/Img.svelte';
 	import MediaRow from '$lib/components/MediaRow.svelte';
+	import SectionSwitch from '$lib/components/SectionSwitch.svelte';
 	import SetupNotice from '$lib/components/SetupNotice.svelte';
 	import UpNextCard from '$lib/components/UpNextCard.svelte';
 	import { formatEpisodeCode } from '$lib/media-types/types';
@@ -98,13 +99,16 @@
 			<p class="text-sm text-muted">{greeting},</p>
 			<h1 class="text-2xl font-bold tracking-tight md:text-3xl">{data.displayName}</h1>
 		</div>
-		<a
-			href="/settings"
-			class="grid size-11 place-items-center rounded-full bg-surface-2 text-muted transition hover:text-fg lg:hidden"
-			aria-label="Settings"
-		>
-			<Settings class="size-5" />
-		</a>
+		<div class="flex items-center gap-2 lg:hidden">
+			<SectionSwitch section="watch" compact />
+			<a
+				href="/settings?section=watch"
+				class="grid size-10 place-items-center rounded-full bg-surface-2 text-muted transition hover:text-fg"
+				aria-label="Settings"
+			>
+				<Settings class="size-5" />
+			</a>
+		</div>
 	</header>
 
 	{#if data.tmdbMissing}
@@ -156,14 +160,6 @@
 				{/each}
 			</ul>
 		</section>
-	{/if}
-
-	{#if data.reading.length}
-		<MediaRow
-			title="Continue reading"
-			items={data.reading.map(toResult)}
-			href="/library?type=book"
-		/>
 	{/if}
 
 	{#if data.watchlist.length}

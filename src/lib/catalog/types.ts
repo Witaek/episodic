@@ -3,13 +3,28 @@
  * Providers (TMDB, AniList, …) translate their responses into these shapes.
  */
 
-export type ProviderId = 'tmdb' | 'anilist' | 'tvmaze' | 'openlibrary';
+export type ProviderId =
+	| 'tmdb'
+	| 'anilist'
+	| 'tvmaze'
+	| 'openlibrary'
+	| 'wikidata'
+	| 'mangadex'
+	/** Series grouped by hand by a user. */
+	| 'local';
 
 /** Media types known to the registry (see src/lib/media-types). */
-export type MediaTypeId = 'movie' | 'show' | 'anime' | 'book';
+export type MediaTypeId = 'movie' | 'show' | 'anime' | 'book' | 'bookseries' | 'manga';
+
+/** The Read side of the app (books, book series, manga); everything else is Watch. */
+export const READ_MEDIA_TYPES: readonly MediaTypeId[] = ['book', 'bookseries', 'manga'];
+export const isReadType = (type: MediaTypeId) => READ_MEDIA_TYPES.includes(type);
 
 /** Routing segment for a title page: /title/{kind}/{id}. */
-export type TitleKind = 'movie' | 'tv' | 'anime' | 'book';
+/** 'series': a book series from Wikidata; 'collection': a series grouped by hand. */
+export type TitleKind = 'movie' | 'tv' | 'anime' | 'book' | 'series' | 'collection' | 'manga';
+
+export const READ_KINDS: readonly TitleKind[] = ['book', 'series', 'collection', 'manga'];
 
 export interface Image {
 	url: string;
@@ -74,6 +89,10 @@ export interface Episode extends EpisodeSummary {
 	still: Image | null;
 	runtime: number | null;
 	rating: number | null;
+	/** Book volumes: page count. */
+	pages?: number | null;
+	/** Book volumes: the Open Library work, digits. */
+	work?: string | null;
 }
 
 export interface SeasonSummary {
@@ -110,6 +129,8 @@ export interface TitleDetails {
 	/** Books: page count. */
 	pages?: number | null;
 	rating: number | null;
+	/** Number of ratings behind `rating` (TMDB), to tell real films from obscure ones. */
+	votes?: number | null;
 	certification: string | null;
 	/** Networks for TV, studios for anime, production companies for movies. */
 	companies: string[];
@@ -121,8 +142,23 @@ export interface TitleDetails {
 	recommendations: SearchResult[];
 	trailerUrl: string | null;
 	externalIds: Partial<
-		Record<'tmdb' | 'imdb' | 'tvdb' | 'anilist' | 'mal' | 'tvmaze' | 'openlibrary', string>
+		Record<
+			| 'tmdb'
+			| 'imdb'
+			| 'tvdb'
+			| 'anilist'
+			| 'mal'
+			| 'tvmaze'
+			| 'openlibrary'
+			| 'wikidata'
+			| 'mangadex'
+			/** Language the series/manga was loaded in. */
+			| 'lang',
+			string
+		>
 	>;
+	/** Books and manga: authors. */
+	authors?: string[];
 	/** Where the data came from, for attribution and "open on …" links. */
 	sourceUrl: string | null;
 }
@@ -146,9 +182,11 @@ export interface BookEdition {
 	year: string | null;
 }
 
-export type SearchFilter = 'all' | 'tv' | 'anime' | 'movie' | 'book';
+export type SearchFilter = 'all' | 'tv' | 'anime' | 'movie' | 'book' | 'manga';
 
 export function titleHref(ref: Pick<TitleRef, 'kind' | 'id'>, season?: number | null): string {
-	const base = `/title/${ref.kind}/${encodeURIComponent(ref.id)}`;
+	// Books, series and manga live in the Read section.
+	const section = READ_KINDS.includes(ref.kind) ? 'read' : 'title';
+	const base = `/${section}/${ref.kind}/${encodeURIComponent(ref.id)}`;
 	return season != null ? `${base}?season=${season}` : base;
 }

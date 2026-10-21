@@ -38,8 +38,8 @@ const SIZES: Record<ImageKind, { default: string; srcset: [string, number][] }> 
 		srcset: [
 			['w300', 300],
 			['w780', 780],
-			['w1280', 1280],
-			['original', 1920]
+			// No 'original': TMDB originals can be 4K and several MB.
+			['w1280', 1280]
 		]
 	},
 	profile: {
@@ -51,9 +51,10 @@ const SIZES: Record<ImageKind, { default: string; srcset: [string, number][] }> 
 	},
 	still: {
 		default: 'w300',
+		// Episode thumbnails are small; w300 is plenty even on 3x screens.
 		srcset: [
-			['w300', 300],
-			['original', 1280]
+			['w185', 185],
+			['w300', 300]
 		]
 	},
 	logo: {

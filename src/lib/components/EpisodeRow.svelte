@@ -59,6 +59,7 @@
 					image={episode.still}
 					alt=""
 					sizes="(min-width: 768px) 176px, 128px"
+					maxWidth={300}
 					class="aspect-video w-32 rounded-lg md:w-44 {watched ? 'opacity-55' : ''}"
 				/>
 			</div>

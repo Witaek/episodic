@@ -23,7 +23,13 @@
 <li class="flex items-center gap-3 py-3">
 	<a href={item.title.href} class="flex min-w-0 flex-1 items-center gap-3">
 		{#if image}
-			<Img {image} alt="" sizes="112px" class="aspect-video w-24 shrink-0 rounded-lg md:w-28" />
+			<Img
+				{image}
+				alt=""
+				sizes="112px"
+				maxWidth={300}
+				class="aspect-video w-24 shrink-0 rounded-lg md:w-28"
+			/>
 		{:else}
 			<Img
 				image={item.title.poster}

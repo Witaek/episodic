@@ -36,8 +36,14 @@
 		if (to?.url.pathname !== '/search') clearTimeout(timer);
 	});
 
-	function update(q: string, filter: SearchFilter, delay = 300) {
+	/** Searches when typing pauses, not on every keystroke (AniList allows ~30 searches a minute). */
+	const TYPING_PAUSE_MS = 500;
+	const MIN_LENGTH = 2;
+
+	function update(q: string, filter: SearchFilter, delay = TYPING_PAUSE_MS) {
 		clearTimeout(timer);
+		// A single character matches almost everything: wait for more (Enter still searches).
+		if (delay > 0 && q.trim().length > 0 && q.trim().length < MIN_LENGTH) return;
 		timer = setTimeout(
 			() => goto(urlFor(q, filter), { replaceState: true, keepFocus: true, noScroll: true }),
 			delay

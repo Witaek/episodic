@@ -10,6 +10,11 @@
 		eager?: boolean;
 		/** View Transition name, for morphing between pages. */
 		transitionName?: string;
+		/**
+		 * Largest image width to download. Phones pick by screen density, so a 400px-wide card on a
+		 * 3x screen would otherwise fetch a 1280px+ image.
+		 */
+		maxWidth?: number;
 	}
 
 	let {
@@ -18,8 +23,26 @@
 		sizes = '200px',
 		class: className = '',
 		eager = false,
-		transitionName
+		transitionName,
+		maxWidth = 1280
 	}: Props = $props();
+
+	// Drop candidates wider than maxWidth (also fixes data stored before sizes were capped).
+	const srcset = $derived.by(() => {
+		if (!image?.srcset) return undefined;
+		const kept = image.srcset
+			.split(',')
+			.map((c) => c.trim())
+			.filter((c) => Number(c.match(/\s(\d+)w$/)?.[1] ?? 0) <= maxWidth);
+		return kept.length ? kept.join(', ') : undefined;
+	});
+	// When the default is too big, use the largest kept candidate.
+	const src = $derived.by(() => {
+		if (!image) return undefined;
+		const last = srcset?.split(',').at(-1)?.trim().split(/\s+/)[0];
+		const defaultWidth = Number(image.url.match(/\/w(\d+)\//)?.[1] ?? 0);
+		return last && defaultWidth > maxWidth ? last : image.url;
+	});
 
 	// The image is absolutely positioned inside; the wrapper needs a position unless one is given.
 	const position = $derived(/\b(absolute|fixed|sticky)\b/.test(className) ? '' : 'relative');
@@ -55,8 +78,8 @@
 		{#key image.url}
 			<img
 				{@attach fadeIn}
-				src={image.url}
-				srcset={image.srcset}
+				{src}
+				{srcset}
 				{sizes}
 				{alt}
 				loading={eager ? 'eager' : 'lazy'}

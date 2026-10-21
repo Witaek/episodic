@@ -5,6 +5,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-21
+
+Faster, especially on phones.
+
+### Changed
+
+- Pages and page data are compressed (brotli/gzip): 6–36× smaller, e.g. the home page of a large
+  library went from 472 KB to 13 KB. Streamed parts of a page still arrive as soon as they're ready.
+- Pages you've opened before load instantly: expired show, book and trending data is shown right
+  away and refreshed in the background (5 ms instead of 0.4–1.5 s).
+- Search waits until you pause typing (and needs 2 characters; Enter searches right away), so
+  typing no longer runs into AniList's limit of about 30 searches a minute.
+- Phones download right-sized images: no more full-size originals for small episode thumbnails or
+  backdrops, and Up Next cards are capped.
+
+### Fixed
+
+- Copying the calendar link failed on plain `http://` addresses.
+
 ## [1.4.0] - 2026-10-21
 
 ### Added

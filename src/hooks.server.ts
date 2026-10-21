@@ -12,6 +12,7 @@ import { config } from '$lib/server/config';
 import { closeDb, runMigrations } from '$lib/server/db/client';
 import { startJobs } from '$lib/server/jobs';
 import { stopJobs } from '$lib/server/jobs/scheduler';
+import { compress } from '$lib/server/compression';
 import { isRequestOriginAllowed } from '$lib/server/security';
 import { THEME_COLORS, THEME_COOKIE, parseTheme } from '$lib/theme';
 
@@ -86,10 +87,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const theme = parseTheme(event.cookies.get(THEME_COOKIE));
-	return resolve(event, {
+	const response = await resolve(event, {
 		transformPageChunk: ({ html }) =>
 			html
 				.replace('%episodic.theme%', theme)
 				.replace('%episodic.themeColor%', THEME_COLORS[theme === 'light' ? 'light' : 'dark'])
 	});
+	return compress(event.request, response);
 };

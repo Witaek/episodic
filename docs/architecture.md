@@ -155,8 +155,12 @@ without a TMDB entry, or any anime while TMDB isn't configured, open an AniList-
 (`/title/anime/<anilist id>`) with a flat episode list.
 
 **Cache lifetimes:** search and trending results are kept for 6 hours, title details and seasons for
-12 hours. Expired entries are kept for another 7 days so a stale value can be served when a provider
-is down. The daily `cleanup` job removes them after that.
+12 hours. After that, `cached()` serves the expired value immediately and refreshes it in the
+background (stale-while-revalidate), for up to 7 days; it is also served if a provider is down. The
+daily `cleanup` job removes entries older than that.
+
+**Responses** are compressed in `hooks.server.ts` (`server/compression.ts`, brotli or gzip, flushed
+per chunk so streamed data still arrives early). Static files are precompressed at build time.
 
 ## Design principles
 

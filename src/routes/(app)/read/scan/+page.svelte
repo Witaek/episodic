@@ -3,7 +3,7 @@
 	import { BookPlus, Camera, CameraOff, Library, LoaderCircle, ScanBarcode } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import Img from '$lib/components/Img.svelte';
-	import { isIsbn, type IsbnLookup } from '$lib/scan';
+	import { isIsbn, type IsbnLookup, type IsbnUnmatched } from '$lib/scan';
 	import { haptic, setLibraryStatus } from '$lib/tracking/client';
 
 	type Detector = { detect(source: HTMLVideoElement): Promise<{ rawValue: string }[]> };
@@ -17,7 +17,7 @@
 
 	let looking = $state(false);
 	let found = $state<IsbnLookup | null>(null);
-	let notFound = $state<string | null>(null);
+	let notFound = $state<{ isbn: string; title?: string; authors?: string[] } | null>(null);
 	let manual = $state('');
 	let added = $state<Set<string>>(new Set());
 	let scanned = $state<IsbnLookup[]>([]);
@@ -104,7 +104,8 @@
 		try {
 			const response = await fetch(`/api/books/isbn/${encodeURIComponent(isbn)}`);
 			if (response.status === 404 || response.status === 400) {
-				notFound = isbn;
+				const body = (await response.json().catch(() => ({}))) as IsbnUnmatched;
+				notFound = { isbn, title: body.title, authors: body.authors };
 				return;
 			}
 			if (!response.ok) throw new Error(String(response.status));
@@ -273,9 +274,22 @@
 		</section>
 	{:else if notFound}
 		<p class="rounded-2xl bg-surface-2 p-4 text-sm" aria-live="polite">
-			Open Library doesn't know ISBN {notFound}. Try
-			<a href="/read/search" class="font-semibold text-accent hover:underline">searching by title</a
-			>.
+			{#if notFound.title}
+				This is <span class="font-semibold">{notFound.title}</span>{notFound.authors?.length
+					? ` by ${notFound.authors.join(', ')}`
+					: ''}, but Open Library doesn't list it yet.
+				<a
+					href="/read/search?q={encodeURIComponent(
+						[notFound.title, notFound.authors?.[0]].filter(Boolean).join(' ')
+					)}&lang=any"
+					class="font-semibold text-accent hover:underline">Search for it</a
+				> (perhaps under its original title).
+			{:else}
+				No book found for ISBN {notFound.isbn}. Try
+				<a href="/read/search" class="font-semibold text-accent hover:underline"
+					>searching by title</a
+				>.
+			{/if}
 		</p>
 	{/if}
 

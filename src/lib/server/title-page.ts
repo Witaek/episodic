@@ -7,7 +7,11 @@ import {
 	type Season,
 	type TitleKind
 } from '$lib/catalog/types';
-import { animeMoviesForShow, showForAnimeMovie } from '$lib/server/services/franchise';
+import {
+	animeMoviesForShow,
+	resolveShowMovies,
+	showForAnimeMovie
+} from '$lib/server/services/franchise';
 import type { UserPrefs } from '$lib/server/db/schema';
 import { NotConfiguredError } from '$lib/server/providers';
 import { editionOf } from '$lib/server/services/books';
@@ -226,6 +230,7 @@ async function franchiseMovies(
 	userId: number,
 	prefs: UserPrefs
 ): Promise<FranchiseMovie[]> {
+	await resolveShowMovies(tmdbTvId);
 	const ids = animeMoviesForShow(tmdbTvId);
 	const settled = await Promise.allSettled(ids.map((id) => getTitle('movie', String(id))));
 	return settled.flatMap((outcome, i) => {

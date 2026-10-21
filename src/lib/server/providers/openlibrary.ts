@@ -264,3 +264,15 @@ export async function findByIsbn(isbn: string): Promise<{ work: string; edition:
 		return null;
 	}
 }
+
+/** The work for a title by one of these authors (e.g. a translation's original title). */
+export async function findWork(title: string, authors: string[]): Promise<string | null> {
+	for (const author of authors.length ? authors : ['']) {
+		const params = new URLSearchParams({ title, fields: 'key', limit: '1' });
+		if (author) params.set('author', author);
+		const data = await get<{ docs: { key: string }[] }>(`/search.json?${params}`);
+		const work = data.docs[0] ? workId(data.docs[0].key) : null;
+		if (work) return work;
+	}
+	return null;
+}

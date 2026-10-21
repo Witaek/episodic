@@ -20,7 +20,9 @@ Settings are shared by both sides.
 A book that belongs to a series (Harry Potter, The Lord of the Rings, Le Seigneur des anneaux…)
 is tracked through its series, the way an episode belongs to a show:
 
-- Searching shows **one card for the series** instead of a card for each of its books.
+- Searching for a series ("harry potter") shows **one card for the series** instead of a card for
+  each of its books. Searching for one book ("les piliers de la terre") shows that book, labelled
+  with its series ("Kingsbridge #1"), followed by the series card.
 - The series page lists the books in reading order, with covers and page counts. Tap ✓ to mark a
   book read, or use ⋯ for "mark all up to here", a date, or reading it again.
 - While a book is in progress, its page appears under it and on the Reading screen.
@@ -67,7 +69,9 @@ ahead of or behind a steady pace. Set 0 to remove it. A new year starts without 
 ## Scanning a barcode
 
 **Read → Scan a book** (or **Scan** on the search screen) reads the ISBN barcode on a back cover
-with your phone's camera. Episodic finds that exact edition (so the title and cover match your
+with your phone's camera. Episodic finds that exact edition (when Open Library doesn't list it, the
+[BnF](https://catalogue.bnf.fr) catalogue identifies it, which covers nearly every book published in
+France) (so the title and cover match your
 copy) and tells you which series it's part of. From there you can open it, open the series, or add
 it to Want to read in one tap. You can also type an ISBN.
 

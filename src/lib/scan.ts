@@ -2,7 +2,8 @@
 export interface IsbnLookup {
 	isbn: string;
 	work: string;
-	edition: string;
+	/** Open Library edition, when Open Library has this exact edition. */
+	edition: string | null;
 	href: string;
 	name: string;
 	poster: import('$lib/catalog/types').Image | null;
@@ -23,4 +24,11 @@ export function isIsbn(value: string): boolean {
 		return sum % 11 === 0;
 	}
 	return false;
+}
+
+/** A barcode that is a book Open Library doesn't have, as identified by the BnF. */
+export interface IsbnUnmatched {
+	error: string;
+	title?: string;
+	authors?: string[];
 }

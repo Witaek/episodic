@@ -5,6 +5,7 @@ import { getDb } from '../db/client';
 import { jobRuns } from '../db/schema';
 import { mappingsAge, refreshAnimeMappings } from '../providers/anime-mapping';
 import { scheduledBackup } from '../services/backup';
+import { resolveAnimeMovies } from '../services/franchise';
 import { absorbAllBooks } from '../services/book-series';
 import { sendNewEpisodeNotifications } from '../services/notifications';
 import { refreshDueTitles } from '../services/refresh';
@@ -30,6 +31,13 @@ export const jobs: JobDefinition[] = [
 			const count = await refreshAnimeMappings();
 			return `stored ${count} anime mappings`;
 		}
+	},
+	{
+		// Anime films the mapping only knows by IMDb id get their TMDB id (grouping with the show).
+		name: 'anime-movie-links',
+		schedule: '0 5 * * *', // daily 05:00
+		runOnStart: true,
+		run: () => resolveAnimeMovies()
 	},
 	{
 		// Books tracked on their own that belong to a series are moved into the series.

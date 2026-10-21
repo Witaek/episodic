@@ -11,6 +11,7 @@ and it's free for personal use.
 | [Open Library](https://openlibrary.org) | Books, editions, covers, ISBN lookup                | None                |
 | [Wikidata](https://www.wikidata.org)    | Book series and their order, adaptations            | None                |
 | [MangaDex](https://mangadex.org)        | Manga volumes, chapters and volume covers           | None                |
+| [BnF](https://catalogue.bnf.fr)         | French editions for ISBN scanning                   | None                |
 
 ## TMDB: API Read Access Token
 

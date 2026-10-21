@@ -192,7 +192,17 @@
 				<PosterGrid items={data.results} />
 			</div>
 		{:else}
-			<p class="py-16 text-center text-muted">No results for “{data.query}”.</p>
+			<div class="py-16 text-center text-muted">
+				<p>No results for “{data.query}”.</p>
+				{#if read && data.filter === 'book'}
+					<p class="mt-2 text-sm">
+						Have the book at hand?
+						<a href="/read/scan" class="font-semibold text-accent hover:underline"
+							>Scan or type its ISBN</a
+						>: that also finds French editions the catalog doesn't list by title.
+					</p>
+				{/if}
+			</div>
 		{/if}
 	{:else if data.browse.length}
 		<h2 class="text-sm font-semibold tracking-wide text-muted uppercase">

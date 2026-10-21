@@ -77,13 +77,15 @@ export class RateLimiter {
 export interface RequestOptions extends RequestInit {
 	timeoutMs?: number;
 	retries?: number;
+	/** 'text' returns the body as a string (XML APIs). */
+	as?: 'json' | 'text';
 }
 
 export function createHttpClient(provider: string, limit: RateLimit) {
 	const limiter = new RateLimiter(limit);
 
 	return async function requestJson<T>(url: string, options: RequestOptions = {}): Promise<T> {
-		const { timeoutMs = 10_000, retries = 2, ...init } = options;
+		const { timeoutMs = 10_000, retries = 2, as = 'json', ...init } = options;
 
 		for (let attempt = 0; ; attempt++) {
 			const response = await limiter
@@ -93,7 +95,7 @@ export function createHttpClient(provider: string, limit: RateLimit) {
 					throw new ProviderError(`${provider} request failed: ${String(error)}`, provider);
 				});
 
-			if (response?.ok) return (await response.json()) as T;
+			if (response?.ok) return (as === 'text' ? await response.text() : await response.json()) as T;
 
 			const status = response?.status;
 			const retryable = !response || status === 429 || (status !== undefined && status >= 500);

@@ -358,6 +358,15 @@ const SEARCH_PATHS: Record<Exclude<SearchFilter, 'anime' | 'book' | 'manga'>, st
 	movie: '/search/movie'
 };
 
+/** The TMDB movie with this IMDb id, if any. */
+export async function tmdbMovieForImdb(imdbId: string): Promise<number | null> {
+	const data = await get<{ movie_results: { id: number }[] }>(
+		`/find/${encodeURIComponent(imdbId)}`,
+		{ external_source: 'imdb_id' }
+	);
+	return data.movie_results[0]?.id ?? null;
+}
+
 export const tmdb = {
 	id: 'tmdb',
 	name: 'TMDB',

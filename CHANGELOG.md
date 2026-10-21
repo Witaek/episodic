@@ -5,6 +5,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-21
+
+### Fixed
+
+- **More anime movies are grouped with their show** (Naruto, Naruto Shippuden and about 470
+  others). The anime mapping lists many films only as specials of their show, with an IMDb id;
+  Episodic now finds their TMDB movie once (daily job `anime-movie-links`, and when you open the
+  show). AniList search results for those films open the movie.
+- **Scanning French editions**: an ISBN Open Library doesn't know is looked up in the BnF
+  catalogue (French national library) and matched to the book by its original title and author,
+  e.g. _Les oiseaux du temps_ → _This Is How You Lose the Time War_.
+- **Book search**: results matching your words (title or author) come first and unrelated books
+  are dropped. Searching for a book of a series shows the book, labelled with its series
+  ("Kingsbridge #1"), instead of hiding it behind a series card you may not recognise; searching
+  the series name still bundles its books.
+
 ## [2.0.1] - 2026-10-21
 
 ### Fixed

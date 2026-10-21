@@ -1,6 +1,6 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import { getDb } from '../db/client';
-import { animeMappings, appMeta } from '../db/schema';
+import { animeMappings, animeMovieLinks, appMeta } from '../db/schema';
 import { DAY } from '../cache';
 import { createHttpClient } from './http';
 
@@ -78,14 +78,21 @@ export async function ensureAnimeMappings(): Promise<void> {
 	if (mappingsAge() > MAX_AGE) await refreshAnimeMappings();
 }
 
+/** Mapping rows by AniList id; a film's TMDB movie id is filled in when found through IMDb. */
 export function mappingsByAnilistIds(ids: number[]): Map<number, AnimeMapping> {
 	if (ids.length === 0) return new Map();
 	const rows = getDb()
-		.select()
+		.select({ mapping: animeMappings, linkedMovie: animeMovieLinks.tmdbMovieId })
 		.from(animeMappings)
+		.leftJoin(animeMovieLinks, eq(animeMovieLinks.imdbId, animeMappings.imdbId))
 		.where(inArray(animeMappings.anilistId, ids))
 		.all();
-	return new Map(rows.map((row) => [row.anilistId, row]));
+	return new Map(
+		rows.map(({ mapping, linkedMovie }) => [
+			mapping.anilistId,
+			{ ...mapping, tmdbMovieId: mapping.tmdbMovieId ?? linkedMovie }
+		])
+	);
 }
 
 export function mappingsForTmdbTv(tmdbId: number): AnimeMapping[] {

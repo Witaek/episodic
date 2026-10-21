@@ -52,6 +52,17 @@ export const animeMappings = sqliteTable(
 	]
 );
 
+/**
+ * TMDB movie ids for anime movies the mapping file only knows by IMDb id (it lists many films,
+ * like Naruto's, as specials of their show). Keyed by IMDb id so it survives mapping refreshes;
+ * a null movie id means TMDB has no match (checked again later).
+ */
+export const animeMovieLinks = sqliteTable('anime_movie_links', {
+	imdbId: text('imdb_id').primaryKey(),
+	tmdbMovieId: integer('tmdb_movie_id'),
+	checkedAt: timestamp('checked_at').notNull()
+});
+
 /** One row per background job run, for the status panel and debugging. */
 export const jobRuns = sqliteTable(
 	'job_runs',

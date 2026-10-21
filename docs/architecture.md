@@ -92,7 +92,9 @@ the types in `src/lib/catalog/types.ts`.
 ## Anime franchises and book editions
 
 - **Anime movies** (`services/franchise.ts`): entries of one franchise share a TVDB id in
-  `anime_mappings`, which links TMDB movies to their TMDB show. Show pages list the movies,
+  `anime_mappings`, which links TMDB movies to their TMDB show. Many films are listed there only
+  as specials of their show with an IMDb id; `anime_movie_links` keeps their TMDB movie id, found
+  with TMDB's `/find` (daily `anime-movie-links` job, and on the show page). Show pages list the movies,
   movie pages link to the show, and `foldAnimeMovies` (search) and the Library's `foldMovies`
   hide a movie when its show is listed next to it, adding "+N movies" to the show.
 - **Book editions** (`services/books.ts`): searching with a language (Open Library's `lang` plus
@@ -183,6 +185,7 @@ The `refresh-titles` job runs every 20 minutes and refreshes up to 25 overdue ti
 | Open Library | Book search, editions, covers and page counts, ISBN lookup                               | —                                |
 | Wikidata     | Book series and their order, adaptations ("based on") with TMDB ids                      | SPARQL, cached                   |
 | MangaDex     | Manga volumes, chapters and volume covers                                                | —                                |
+| BnF          | ISBN lookups Open Library can't answer (French editions, original title of translations) | 2 requests/s                     |
 
 **How anime works:** an AniList search result is looked up in `anime_mappings`. If it maps to a
 TMDB show, the result links to that show at the mapped season (`/title/tv/95479?season=2`), so

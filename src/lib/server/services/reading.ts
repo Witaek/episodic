@@ -20,8 +20,22 @@ import {
 } from '../providers/anilist';
 import { ProviderError } from '../providers/http';
 import { findByAnilist, volumeCovers, volumes, type MangaVolume } from '../providers/mangadex';
-import { openlibrary, volumeInfo, type VolumeInfo } from '../providers/openlibrary';
+import {
+	findWorkInLanguage,
+	openlibrary,
+	volumeInfo,
+	workOfEdition,
+	type VolumeInfo
+} from '../providers/openlibrary';
 import { seriesDetails, type SeriesInfo } from '../providers/wikidata';
+import { bookEditions, localizedSummary } from './book-details';
+import { normalize } from './read-search';
+
+/** Two titles name the same book (ignoring case, accents, punctuation and a subtitle). */
+const sameTitle = (a: string, b: string) => {
+	const [x, y] = [normalize(a.split(':')[0]), normalize(b.split(':')[0])];
+	return x === y || x.startsWith(y) || y.startsWith(x);
+};
 import { layoutVolumes, type VolumeLayout } from './manga-volumes';
 
 /**
@@ -57,18 +71,76 @@ async function seriesBundle(
 		async () => {
 			const info = await seriesDetails(id, lang ?? 'en');
 			if (!info) return null;
+			// Books linked to an edition instead of the work: find the work.
+			await Promise.all(
+				info.members
+					.filter((m) => !m.work && m.edition)
+					.map(async (m) => {
+						m.work = await workOfEdition(m.edition!).catch(() => null);
+					})
+			);
+			const candidates = [
+				...new Set(info.members.flatMap((m) => [...m.works, m.work ?? '']))
+			].filter(Boolean);
+			const vols = await volumeInfo(candidates, lang).catch(() => new Map<string, VolumeInfo>());
+			// Of the works linked to a book, prefer one with an edition in the reader's language.
+			for (const m of info.members) {
+				const best = m.works
+					.map((w) => ({ w, v: vols.get(w) }))
+					.sort(
+						(a, b) =>
+							Number(!!b.v?.inLanguage) - Number(!!a.v?.inLanguage) ||
+							Number(!!b.v?.cover) - Number(!!a.v?.cover)
+					)[0];
+				if (best?.v) m.work = best.w;
+			}
 			const works = info.members.map((m) => m.work).filter((w): w is string => !!w);
-			const vols = await volumeInfo(works, lang).catch(() => new Map<string, VolumeInfo>());
+			// Wikidata sometimes links a duplicate work with no edition in the reader's language:
+			// look for the work that has one, by the book's title in that language.
+			if (lang) {
+				const author = info.authors[0] ?? null;
+				const better = await Promise.all(
+					info.members.map(async (m) => {
+						const vol = m.work ? vols.get(m.work) : undefined;
+						if (vol?.inLanguage || !m.localLabel) return null;
+						const found = await findWorkInLanguage(m.localLabel, author, lang).catch(() => null);
+						return found && found !== m.work ? { m, found } : null;
+					})
+				);
+				const swaps = better.filter((b) => b !== null);
+				if (swaps.length) {
+					const extra = await volumeInfo(
+						swaps.map((b) => b.found),
+						lang
+					).catch(() => new Map<string, VolumeInfo>());
+					for (const { m, found } of swaps) {
+						const vol = extra.get(found);
+						// Open Library's title search is loose: only take a work whose title matches.
+						if (!vol?.inLanguage || !sameTitle(vol.title, m.localLabel!)) continue;
+						m.work = found;
+						vols.set(found, vol);
+					}
+				}
+			}
+			const firstWork =
+				(info.members.find((m) => m.ordinal === '1' && m.work) ?? info.members.find((m) => m.work))
+					?.work ?? null;
 			// The first book's synopsis and subjects describe the series well enough.
-			const first = works[0]
+			const first = firstWork
 				? await openlibrary
-						.getTitle('book', works[0], { language: 'en', region: 'US' })
+						.getTitle('book', firstWork, { language: 'en', region: 'US' })
 						.catch(() => null)
 				: null;
+			// Book 1 describes the series (not a prequel numbered 0); in the reader's language when one
+			// of its editions or Wikipedia has a summary.
+			const localized =
+				lang && lang !== 'en' && firstWork
+					? await localizedSummary(firstWork, lang, await bookEditions(firstWork))
+					: null;
 			return {
 				info,
 				volumes: [...vols],
-				overview: first?.overview ?? info.description,
+				overview: localized?.text ?? first?.overview ?? info.description,
 				genres: first?.genres ?? []
 			};
 		},
@@ -79,6 +151,16 @@ async function seriesBundle(
 /** Integer positions are the main books; prequels, half-steps and unnumbered extras go to "Extras". */
 function seriesEpisodes(bundle: SeriesBundle): Episode[] {
 	const vols = new Map(bundle.volumes);
+	// Edition titles that don't tell books apart: the series name, one shared by several books,
+	// or an omnibus ("Le Trône de fer : l'intégrale 5").
+	const editionTitles = bundle.info.members
+		.map((m) => (m.work ? vols.get(m.work) : undefined))
+		.filter((v) => v?.inLanguage)
+		.map((v) => normalize(v!.title));
+	const vague = (title: string) =>
+		normalize(title) === normalize(bundle.info.name) ||
+		editionTitles.filter((t) => t === normalize(title)).length > 1 ||
+		/int[eé]grale|omnibus|coffret|box set/i.test(title);
 	let extra = 0;
 	return bundle.info.members.map((m) => {
 		const position = Number(m.ordinal);
@@ -89,7 +171,12 @@ function seriesEpisodes(bundle: SeriesBundle): Episode[] {
 			id: m.work ? `OL${m.work}W` : `Q${m.qid}`,
 			seasonNumber: main ? 1 : 0,
 			number: main ? position : ++extra,
-			name: volume?.title ?? m.label,
+			// The edition in the reader's language, else Wikidata's title in that language.
+			name:
+				(volume?.inLanguage && !(m.localLabel && vague(volume.title)) ? volume.title : null) ??
+				m.localLabel ??
+				volume?.title ??
+				m.label,
 			overview: null,
 			airDate: published,
 			still: volume?.cover ?? null,

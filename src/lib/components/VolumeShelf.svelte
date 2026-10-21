@@ -202,7 +202,7 @@
 						<div class="flex items-center gap-3">
 							<a href={book.work ? `/read/book/${book.work}` : undefined} class="shrink-0">
 								<Img
-									image={book.still ?? cover}
+									image={book.still}
 									alt=""
 									sizes="64px"
 									class="aspect-[2/3] w-14 rounded-md shadow md:w-16 {plays ? 'opacity-70' : ''}"

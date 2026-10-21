@@ -1,5 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import {
+	BOOK_LANGUAGES,
 	READ_KINDS,
 	titleHref,
 	type BookEdition,
@@ -14,7 +15,17 @@ import {
 } from '$lib/server/services/franchise';
 import type { UserPrefs } from '$lib/server/db/schema';
 import { NotConfiguredError } from '$lib/server/providers';
-import { editionOf } from '$lib/server/services/books';
+import { editionFor, editionsFor, isCoverOnly } from '$lib/server/services/books';
+import {
+	bookEditions,
+	defaultEdition,
+	localizedSummary,
+	anyBlurb,
+	languageOf,
+	looksLike,
+	marcOf
+} from '$lib/server/services/book-details';
+import { bookLanguage } from '$lib/server/services/reading';
 import { getEntry, getUserTitleState } from '$lib/server/services/library';
 import { findTitle, titleEpisodes } from '$lib/server/services/titles';
 import {
@@ -36,6 +47,18 @@ import {
 import { absorbIntoSeries, collectionOfWork } from '$lib/server/services/book-series';
 
 const KINDS: TitleKind[] = ['movie', 'tv', 'anime', 'book', 'series', 'collection', 'manga'];
+
+/** An edition offered in the book page's edition picker. */
+export interface EditionChoice {
+	id: string;
+	title: string;
+	cover: Image | null;
+	publisher: string | null;
+	year: string | null;
+	pages: number | null;
+	languages: string[];
+	inLanguage: boolean;
+}
 
 interface TitlePageEvent {
 	params: { kind: string; id: string };
@@ -77,21 +100,86 @@ export async function loadTitlePage(
 	const stored = findTitle(kind, params.id);
 	const state = getUserTitleState(user.id, stored, user.prefs);
 
-	// Books: show the edition picked in search (?edition=) or the one this reader saved before.
+	// Books: the edition picked in search (?edition=), else the one this reader chose, else one in
+	// their language. The summary follows the reader's language when one can be found.
 	let edition: BookEdition | null = null;
+	let editions: EditionChoice[] = [];
+	let editionChosen = false;
+	let overviewNote: string | null = null;
 	if (kind === 'book') {
+		const language = bookLanguage(locale!.language) ?? 'en';
+		const all = await bookEditions(params.id);
 		const param = url.searchParams.get('edition');
-		const saved = stored ? editionOf(getEntry(user.id, stored.id)?.progress)?.id : null;
-		const editionId = param && /^\d+$/.test(param) ? param : saved;
-		if (editionId) {
-			edition = await getBookEdition(editionId).catch(() => null);
-			if (edition) {
-				title.originalName = edition.title !== title.name ? title.name : null;
-				title.name = edition.title;
-				title.poster = edition.cover ?? title.poster;
-				title.pages = edition.pages ?? title.pages;
+		const saved = editionFor(user.id, params.id);
+		editionChosen = !!saved || !!param;
+		// A cover chosen from another language's edition keeps the usual edition's title and pages.
+		const coverOnly = !param && isCoverOnly(saved);
+		const editionId =
+			(param && /^\d+$/.test(param) ? param : null) ??
+			(coverOnly ? null : saved?.id) ??
+			defaultEdition(all, language)?.id ??
+			null;
+		const listed = all.find((e) => e.id === editionId);
+		edition = listed
+			? {
+					id: listed.id,
+					title: listed.title,
+					cover: listed.cover,
+					pages: listed.pages,
+					language: listed.languages[0] ?? null,
+					publisher: listed.publisher,
+					year: listed.year
+				}
+			: editionId
+				? await getBookEdition(editionId).catch(() => null)
+				: null;
+		if (edition) {
+			title.originalName = edition.title !== title.name ? title.name : null;
+			title.name = edition.title;
+			title.poster = edition.cover ?? title.poster;
+			title.pages = edition.pages ?? title.pages;
+		}
+		if (coverOnly && saved?.cover) {
+			title.poster = saved.cover;
+			// The picker marks the edition the cover comes from.
+			edition = edition ? { ...edition, id: saved.id } : edition;
+		}
+		// A French book's own summary is already French; otherwise look for one in the reader's
+		// language and say so when only the English one exists.
+		if (!title.overview || !looksLike(title.overview, language)) {
+			const summary = await localizedSummary(params.id, language, all, edition?.id, {
+				title: edition?.title ?? title.name,
+				author: title.companies[0] ?? null
+			});
+			if (summary) title.overview = summary.text;
+			else {
+				// Nothing in the reader's language: show what exists, and say which language it is.
+				title.overview ??= anyBlurb(all);
+				const shown = title.overview ? languageOf(title.overview) : null;
+				const name = BOOK_LANGUAGES.find((l) => l.id === shown)?.label;
+				if (shown && shown !== language && name) {
+					overviewNote = `Summary only available in ${shown === 'fr' ? 'French' : name}.`;
+				}
 			}
 		}
+
+		// For the edition picker: covers first, the reader's language first.
+		const marc = marcOf(language);
+		editions = all
+			.map((e) => ({
+				id: e.id,
+				title: e.title,
+				cover: e.cover,
+				publisher: e.publisher,
+				year: e.year,
+				pages: e.pages,
+				languages: e.languages,
+				inLanguage: e.languages.includes(marc)
+			}))
+			.sort(
+				(a, b) => Number(b.inLanguage) - Number(a.inLanguage) || Number(!a.cover) - Number(!b.cover)
+			)
+			.slice(0, 120);
 	}
 
 	// Exact air times learned by the background refresh (AniList/TVmaze), keyed "season-number".
@@ -119,10 +207,14 @@ export async function loadTitlePage(
 				? progressSeason!
 				: defaultSeasonNumber(title);
 		if (seasonNumber !== null) {
-			season = getSeason(kind, params.id, seasonNumber, locale).catch((cause) => {
-				console.error(`[title] season ${seasonNumber} of ${kind}/${params.id} failed`, cause);
-				return null;
-			});
+			season = getSeason(kind, params.id, seasonNumber, locale)
+				.then((loaded) =>
+					kind === 'series' || kind === 'collection' ? withEditions(loaded, user.id) : loaded
+				)
+				.catch((cause) => {
+					console.error(`[title] season ${seasonNumber} of ${kind}/${params.id} failed`, cause);
+					return null;
+				});
 		}
 	}
 
@@ -200,6 +292,9 @@ export async function loadTitlePage(
 	return {
 		section,
 		inSeries,
+		editions,
+		editionChosen,
+		overviewNote,
 		adaptations,
 		basedOn: basedOnList,
 		edition,
@@ -212,6 +307,29 @@ export async function loadTitlePage(
 		state,
 		airTimes,
 		refreshedAt: stored?.refreshedAt.toISOString() ?? null
+	};
+}
+
+/** A series' books, shown in the edition each reader chose (cover, title, pages). */
+function withEditions(season: Season, userId: number): Season {
+	const chosen = editionsFor(
+		userId,
+		season.episodes.map((e) => e.work).filter((w): w is string => !!w)
+	);
+	if (chosen.size === 0) return season;
+	return {
+		...season,
+		episodes: season.episodes.map((e) => {
+			const edition = e.work ? chosen.get(e.work) : undefined;
+			return edition
+				? {
+						...e,
+						name: edition.title || e.name,
+						still: edition.cover ?? e.still,
+						pages: edition.pages ?? e.pages
+					}
+				: e;
+		})
 	};
 }
 

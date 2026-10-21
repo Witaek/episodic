@@ -24,6 +24,8 @@ async function sparql(query: string): Promise<Binding[]> {
 const qid = (uri: string | undefined) => uri?.match(/Q(\d+)$/)?.[1] ?? null;
 /** "OL82563W" → "82563" */
 export const olWorkDigits = (value: string | undefined) => value?.match(/^OL(\d+)W$/)?.[1] ?? null;
+/** "OL28095349M" → "28095349" (some books are linked to an edition instead of the work). */
+const olEditionDigits = (value: string | undefined) => value?.match(/^OL(\d+)M$/)?.[1] ?? null;
 const labelLanguages = (language: string) =>
 	[...new Set([language.slice(0, 2), 'en', 'mul'])].join(',');
 
@@ -72,8 +74,14 @@ export interface SeriesMember {
 	qid: string;
 	ordinal: string | null;
 	label: string;
+	/** The title in the requested language, when Wikidata has one. */
+	localLabel: string | null;
 	/** Open Library work, digits. */
 	work: string | null;
+	/** Every Open Library work Wikidata links to this book (duplicates exist). */
+	works: string[];
+	/** Open Library edition, when Wikidata links one instead of the work. */
+	edition: string | null;
 	published: string | null;
 }
 
@@ -96,10 +104,12 @@ export async function seriesDetails(seriesId: string, language = 'en'): Promise<
 				SERVICE wikibase:label { bd:serviceParam wikibase:language "${langs}". }
 			}`),
 		sparql(`
-			SELECT ?book ?bookLabel ?ord ?ol ?date ?authorLabel WHERE {
+			SELECT ?book ?bookLabel ?local ?english ?ord ?ol ?date ?authorLabel WHERE {
 				?book p:P179 ?st. ?st ps:P179 wd:Q${seriesId}.
 				OPTIONAL { ?st pq:P1545 ?ord }
 				OPTIONAL { ?book wdt:P648 ?ol }
+				OPTIONAL { ?book rdfs:label ?local FILTER(LANG(?local) = "${language.slice(0, 2)}") }
+				OPTIONAL { ?book rdfs:label ?english FILTER(LANG(?english) = "en") }
 				OPTIONAL { ?book wdt:P577 ?date }
 				OPTIONAL { ?book wdt:P50 ?author }
 				SERVICE wikibase:label { bd:serviceParam wikibase:language "${langs}". }
@@ -119,7 +129,10 @@ export async function seriesDetails(seriesId: string, language = 'en'): Promise<
 		const existing = byBook.get(book);
 		if (existing) {
 			// Keep the earliest date and any Open Library id found on another row.
-			existing.work ??= olWorkDigits(row.ol?.value);
+			const work = olWorkDigits(row.ol?.value);
+			existing.work ??= work;
+			if (work && !existing.works.includes(work)) existing.works.push(work);
+			existing.edition ??= olEditionDigits(row.ol?.value);
 			if (date && (!existing.published || date < existing.published)) existing.published = date;
 			continue;
 		}
@@ -127,7 +140,14 @@ export async function seriesDetails(seriesId: string, language = 'en'): Promise<
 			qid: book,
 			ordinal: row.ord?.value ?? null,
 			label: row.bookLabel?.value ?? '',
+			// A "translation" identical to the English title isn't one (A Game of Thrones in French).
+			localLabel:
+				row.local?.value && (language.startsWith('en') || row.local.value !== row.english?.value)
+					? row.local.value
+					: null,
 			work: olWorkDigits(row.ol?.value),
+			works: olWorkDigits(row.ol?.value) ? [olWorkDigits(row.ol?.value)!] : [],
+			edition: olEditionDigits(row.ol?.value),
 			published: date
 		});
 	}
@@ -148,7 +168,7 @@ export async function seriesDetails(seriesId: string, language = 'en'): Promise<
 	const seen = new Set<string>();
 	const deduped = list
 		// Prefer records linked to Open Library when the same book appears twice.
-		.sort((a, b) => Number(!a.work) - Number(!b.work))
+		.sort((a, b) => Number(!a.work && !a.edition) - Number(!b.work && !b.edition))
 		.filter((m) => {
 			const keys = [m.ordinal ? `#${m.ordinal}` : null, `t:${m.label.toLowerCase()}`].filter(
 				Boolean
@@ -264,4 +284,73 @@ export async function adaptationsOfWorks(
 		SELECT DISTINCT ?book WHERE { VALUES ?ol { ${values} } ?book wdt:P648 ?ol. }`);
 	const items = rows.map((r) => qid(r.book?.value)).filter((q): q is string => !!q);
 	return adaptationsOf(items, language);
+}
+
+/** The Wikipedia article (title) in `language` about the book with this Open Library work id. */
+export async function wikipediaArticleForWork(
+	work: string,
+	language: string
+): Promise<string | null> {
+	const rows = await sparql(`
+		SELECT ?article WHERE {
+			?book wdt:P648 "OL${work}W".
+			?article schema:about ?book; schema:isPartOf <https://${language.slice(0, 2)}.wikipedia.org/>.
+		} LIMIT 1`);
+	const url = rows[0]?.article?.value;
+	return url ? decodeURIComponent(url.split('/wiki/')[1] ?? '') || null : null;
+}
+
+/** The plain-text introduction of a Wikipedia article. */
+export async function wikipediaIntro(title: string, language: string): Promise<string | null> {
+	const params = new URLSearchParams({
+		action: 'query',
+		prop: 'extracts',
+		exintro: '1',
+		explaintext: '1',
+		redirects: '1',
+		format: 'json',
+		titles: title
+	});
+	const data = await request<{ query?: { pages?: Record<string, { extract?: string }> } }>(
+		`https://${language.slice(0, 2)}.wikipedia.org/w/api.php?${params}`,
+		{ headers: { 'user-agent': USER_AGENT } }
+	);
+	const extract = Object.values(data.query?.pages ?? {})[0]?.extract?.trim();
+	return extract || null;
+}
+
+/**
+ * A Wikipedia article about a book found by title (and author): the first search result whose
+ * title matches and whose text mentions the author.
+ */
+export async function searchWikipediaBook(
+	title: string,
+	author: string | null,
+	language: string
+): Promise<string | null> {
+	const surname = author?.split(/\s+/).at(-1) ?? '';
+	const params = new URLSearchParams({
+		action: 'query',
+		list: 'search',
+		srsearch: `intitle:"${title.replace(/"/g, '')}" ${surname}`.trim(),
+		srlimit: '3',
+		format: 'json'
+	});
+	const data = await request<{ query?: { search?: { title: string; snippet: string }[] } }>(
+		`https://${language.slice(0, 2)}.wikipedia.org/w/api.php?${params}`,
+		{ headers: { 'user-agent': USER_AGENT } }
+	);
+	const simple = (t: string) =>
+		t
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase()
+			.replace(/\s*\(.*\)$/, '')
+			.trim();
+	const hit = data.query?.search?.find(
+		(r) =>
+			simple(r.title) === simple(title) &&
+			(!surname || r.snippet.toLowerCase().includes(surname.toLowerCase()))
+	);
+	return hit?.title ?? null;
 }

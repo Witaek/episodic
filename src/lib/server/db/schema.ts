@@ -53,6 +53,27 @@ export const animeMappings = sqliteTable(
 );
 
 /**
+ * The edition each reader chose for a book (Open Library work): its title, cover and page count
+ * are shown everywhere for that reader, including inside a series.
+ */
+export const userEditions = sqliteTable(
+	'user_editions',
+	{
+		userId: integer('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		work: text('work').notNull(),
+		editionId: text('edition_id').notNull(),
+		title: text('title').notNull(),
+		cover: text('cover', { mode: 'json' }).$type<Image | null>(),
+		pages: integer('pages'),
+		language: text('language'),
+		updatedAt: timestamp('updated_at').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.work] })]
+);
+
+/**
  * TMDB movie ids for anime movies the mapping file only knows by IMDb id (it lists many films,
  * like Naruto's, as specials of their show). Keyed by IMDb id so it survives mapping refreshes;
  * a null movie id means TMDB has no match (checked again later).

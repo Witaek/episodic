@@ -10,6 +10,7 @@ import {
 	watchTargetSchema
 } from '$lib/server/api';
 import { getUserTitleState } from '$lib/server/services/library';
+import { readLocale } from '$lib/server/services/adaptations';
 import { rememberEdition } from '$lib/server/services/books';
 import { watch } from '$lib/server/services/tracking';
 import type { RequestHandler } from './$types';
@@ -34,7 +35,12 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 			watchedAt,
 			rewatch: input.rewatch
 		});
-		await rememberEdition(user.id, title.id, url.searchParams.get('edition'));
+		await rememberEdition(
+			user.id,
+			title.id,
+			url.searchParams.get('edition'),
+			readLocale(user.prefs).language
+		);
 		const response: WatchResponse = {
 			...result,
 			state: getUserTitleState(user.id, title, user.prefs)

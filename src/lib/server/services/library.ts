@@ -14,7 +14,7 @@ import type { UserPrefs } from '../db/schema';
 import { getDb } from '../db/client';
 import { activityEvents, episodes, libraryEntries, titles } from '../db/schema';
 import { computeProgress, progressForTitles, watchCounts } from './progress';
-import { editionOf } from './books';
+import { editionFor, editionsFor, type StoredEdition } from './books';
 import { titleEpisodes, type TitleRow } from './titles';
 
 export type LibraryEntry = typeof libraryEntries.$inferSelect;
@@ -38,10 +38,12 @@ export function seriesReading(
 
 export function readingOf(
 	entry: LibraryEntry | undefined,
-	title: Pick<TitleRow, 'pages'>
+	title: Pick<TitleRow, 'pages'>,
+	edition: StoredEdition | null = null
 ): ReadingProgress {
 	const page = entry?.progress?.page;
-	const pages = editionOf(entry?.progress)?.pages ?? title.pages ?? null;
+	// The reader's edition may have a different page count than the work.
+	const pages = edition?.pages ?? title.pages ?? null;
 	return { page: typeof page === 'number' ? page : null, pages };
 }
 
@@ -104,7 +106,10 @@ export function getUserTitleState(
 			status: entry?.status ?? null,
 			watched,
 			progress: null,
-			reading: title.mediaType === 'book' ? readingOf(entry, title) : null,
+			reading:
+				title.mediaType === 'book'
+					? readingOf(entry, title, editionFor(userId, title.externalId))
+					: null,
 			lastActivityAt: entry?.lastActivityAt?.toISOString() ?? null
 		};
 	}
@@ -167,15 +172,19 @@ export function listLibrary(
 	const showIds = rows.filter((r) => !isWholeTitle(r.title)).map((r) => r.title.id);
 	const progress = progressForTitles(userId, showIds, { includeSpecials: prefs.includeSpecials });
 
+	// Books show the reader's edition (e.g. the French title and cover).
+	const editions = editionsFor(
+		userId,
+		rows.filter((r) => r.title.kind === 'book').map((r) => r.title.externalId)
+	);
 	return rows.map(({ entry, title }) => {
-		// Books show the reader's edition (e.g. the French title and cover).
-		const edition = title.mediaType === 'book' ? editionOf(entry.progress) : null;
+		const edition = title.kind === 'book' ? (editions.get(title.externalId) ?? null) : null;
 		return {
 			titleId: title.id,
 			kind: title.kind,
 			externalId: title.externalId,
 			href: titleHref({ kind: title.kind, id: title.externalId }),
-			name: edition?.title ?? title.name,
+			name: edition?.title || title.name,
 			mediaType: title.mediaType,
 			isAnime: title.isAnime,
 			poster: edition?.cover ?? title.poster ?? null,
@@ -188,7 +197,7 @@ export function listLibrary(
 			progress: progress.get(title.id) ?? null,
 			reading:
 				title.mediaType === 'book'
-					? readingOf(entry, title)
+					? readingOf(entry, title, edition)
 					: title.mediaType === 'bookseries'
 						? seriesReading(entry, unitPages(title.id, entry))
 						: null

@@ -43,6 +43,21 @@ Hand-made series are shared by everyone on your server and are included in your 
 hand-made series, ⋯ → **Remove from this series** takes a book out again (its reads go back to the
 book itself).
 
+## Your edition and its cover
+
+Books are shown in your book language (the **English / Français** choice in search): the usual
+edition in that language, with its title, cover, page count and, when one exists, a summary in that
+language (from the edition's blurb or Wikipedia).
+
+To show the edition you own, open the book and tap the edition line under the author (for example
+"Le Livre de Poche · 2012 · Change"). Pick any edition: its cover, title and page count are then
+used everywhere for you, including inside its series, and your page progress counts its pages.
+Choosing a cover from an edition in another language only takes the cover.
+
+Many books have few covers on Open Library. If yours is missing, you can add it on
+[openlibrary.org](https://openlibrary.org) (free account): it appears in Episodic after the next
+refresh.
+
 ## Manga
 
 Manga come from [AniList](https://anilist.co), with volumes and chapters from

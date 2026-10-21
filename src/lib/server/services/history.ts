@@ -4,7 +4,7 @@ import type { Section } from '$lib/section';
 import type { HistoryItem } from '$lib/tracking/types';
 import { getDb } from '../db/client';
 import { activityEvents, episodes, libraryEntries, titles } from '../db/schema';
-import { editionOf } from './books';
+import { editionsFor } from './books';
 
 export type { HistoryItem };
 
@@ -64,16 +64,30 @@ export function listHistory(
 
 	const page = rows.slice(0, limit);
 	const last = page.at(-1);
+	// Books, and books of a series, show the reader's edition.
+	const workOf = (r: (typeof page)[number]) =>
+		r.title.kind === 'book'
+			? r.title.externalId
+			: r.title.mediaType === 'bookseries'
+				? (r.episode?.externalId ?? null)
+				: null;
+	const editions = editionsFor(
+		userId,
+		page.map(workOf).filter((w): w is string => !!w)
+	);
 	return {
-		items: page.map(({ event, title, episode, entry }) => {
-			const edition = editionOf(entry?.progress);
+		items: page.map((row) => {
+			const { event, title, episode } = row;
+			const work = workOf(row);
+			const chosen = work ? editions.get(work) : undefined;
+			const edition = title.kind === 'book' ? chosen : undefined;
 			return {
 				eventId: event.id,
 				occurredAt: event.occurredAt.toISOString(),
 				isRepeat: event.isRepeat,
 				title: {
 					id: title.id,
-					name: edition?.title ?? title.name,
+					name: edition?.title || title.name,
 					href: titleHref(
 						{ kind: title.kind, id: title.externalId },
 						episode ? episode.seasonNumber : null
@@ -86,8 +100,8 @@ export function listHistory(
 					? {
 							seasonNumber: episode.seasonNumber,
 							number: episode.number,
-							name: episode.name,
-							still: episode.still ?? null,
+							name: (title.kind !== 'book' && chosen?.title) || episode.name,
+							still: (title.kind !== 'book' && chosen?.cover) || episode.still || null,
 							runtime: episode.runtime
 						}
 					: null,

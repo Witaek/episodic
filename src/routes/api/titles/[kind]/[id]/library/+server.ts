@@ -9,6 +9,7 @@ import {
 	requireUser
 } from '$lib/server/api';
 import { getUserTitleState, removeEntry, setStatus } from '$lib/server/services/library';
+import { readLocale } from '$lib/server/services/adaptations';
 import { rememberEdition } from '$lib/server/services/books';
 import { findTitle } from '$lib/server/services/titles';
 import type { RequestHandler } from './$types';
@@ -23,7 +24,12 @@ export const PUT: RequestHandler = async ({ locals, params, request, url }) => {
 	return handleErrors(async () => {
 		const title = await ensureTitleFor(user, kind, id);
 		setStatus(user.id, title.id, status);
-		await rememberEdition(user.id, title.id, url.searchParams.get('edition'));
+		await rememberEdition(
+			user.id,
+			title.id,
+			url.searchParams.get('edition'),
+			readLocale(user.prefs).language
+		);
 		return json({ state: getUserTitleState(user.id, title, user.prefs) });
 	});
 };

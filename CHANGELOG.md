@@ -5,6 +5,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-21
+
+Books in your language, and the cover you own.
+
+### Added
+
+- **Choose your edition** on any book page: pick the edition you own, and its cover, title and
+  page count are shown everywhere for you (Shelf, History, and inside its series). Picking a cover
+  from another language's edition keeps the title and page count in your language.
+
+### Fixed
+
+- **Series in one language**: books of a series showed titles from random languages (_Mondo
+  senza fine_, _Armor of Light_). Only editions really in your language are used; otherwise
+  Wikidata's title in your language. Books Wikidata links to an edition instead of the work, or to
+  a duplicate work without a French edition, are matched to the right work.
+- **French summaries**: books show a summary in your language (the blurb of an edition in that
+  language, else Wikipedia's introduction). When none exists, the summary shown says which
+  language it's in.
+- **Better default edition**: the usual edition in your language (its common title and main
+  publisher), not a self-published, annotated, omnibus or audio edition.
+- A book without a cover in a series no longer shows the series' cover.
+- "First published" instead of "First aired" for books and series.
+
 ## [2.1.0] - 2026-10-21
 
 ### Fixed

@@ -126,6 +126,10 @@ sides share code and differ by a `Section` (`src/lib/section.ts`):
 - **Books into series.** `services/book-series.ts` moves a user's events, page and status from a
   single book into its series (`absorbBook`), from the book page and the daily
   `books-into-series` job. It also creates, fills and restores hand-made series.
+- **Editions and language.** `services/book-details.ts` picks the default edition in the
+  reader's language (`defaultEdition`) and a summary in it (`localizedSummary`: edition blurb, then
+  Wikipedia). The reader's own choice lives in `user_editions` (`services/books.ts`), applied to
+  book pages, series lists, the Shelf and History.
 - **Search.** `services/read-search.ts` folds book results into series cards
   (`foldIntoSeries`, membership from `wikidata.seriesForWorks`, cached a week).
 - **Adaptations.** `services/adaptations.ts` reads Wikidata "based on" (P144) with TMDB ids, and

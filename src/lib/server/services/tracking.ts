@@ -3,7 +3,7 @@ import { isReadType } from '$lib/catalog/types';
 import type { WatchTarget } from '$lib/tracking/types';
 import { getDb } from '../db/client';
 import { activityEvents, episodes, libraryEntries, type UserPrefs } from '../db/schema';
-import { editionOf } from './books';
+import { editionFor } from './books';
 import { getEntry, isWholeTitle, setStatus, touchEntry } from './library';
 import { compareEpisodes, computeProgress, isAired, watchCounts } from './progress';
 import { titleEpisodes, type TitleRow } from './titles';
@@ -261,7 +261,7 @@ export function setReadingProgress(
 	if (title.mediaType !== 'book') throw new TrackingError('Only books have page progress');
 	const entry = getEntry(userId, title.id);
 	// The reader's edition may have a different page count than the work.
-	const pages = editionOf(entry?.progress)?.pages ?? title.pages;
+	const pages = editionFor(userId, title.externalId)?.pages ?? title.pages;
 	const clamped = Math.max(0, Math.min(Math.round(page), pages ?? Number.MAX_SAFE_INTEGER));
 	const auto = prefs.autoStatus !== false;
 

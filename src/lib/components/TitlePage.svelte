@@ -10,6 +10,7 @@
 		ArrowLeft,
 		Check,
 		CheckCheck,
+		BookCopy,
 		ExternalLink,
 		Library,
 		Play,
@@ -28,6 +29,7 @@
 	import LinkedTitles from '$lib/components/LinkedTitles.svelte';
 	import VolumeShelf from '$lib/components/VolumeShelf.svelte';
 	import GroupIntoSeriesDialog from '$lib/components/GroupIntoSeriesDialog.svelte';
+	import EditionPicker from '$lib/components/EditionPicker.svelte';
 	import Img from '$lib/components/Img.svelte';
 	import MediaRow from '$lib/components/MediaRow.svelte';
 	import PersonCard from '$lib/components/PersonCard.svelte';
@@ -50,6 +52,7 @@
 
 	const title = $derived(data.setupNeeded ? null : data.title);
 	let grouping = $state(false);
+	let pickingEdition = $state(false);
 
 	// A glow in the poster's color behind the page header.
 	let tint = $state<string | null>(null);
@@ -242,15 +245,14 @@
 			? [
 					{ label: 'Type', value: mediaType(title.mediaType).label },
 					{
-						label:
-							title.mediaType === 'book'
-								? 'First published'
-								: title.mediaType === 'movie'
-									? 'Release date'
-									: 'First aired',
+						label: isReadType(title.mediaType)
+							? 'First published'
+							: title.mediaType === 'movie'
+								? 'Release date'
+								: 'First aired',
 						// Open Library only knows the year.
 						value:
-							title.mediaType === 'book'
+							title.mediaType === 'book' || title.mediaType === 'bookseries'
 								? year(title.startDate)
 								: formatDate(title.startDate, 'long')
 					},
@@ -360,6 +362,27 @@
 				{/if}
 				{#if title.mediaType === 'book' && title.companies.length}
 					<p class="mt-1 text-base text-fg/80 md:text-lg">by {title.companies.join(', ')}</p>
+				{/if}
+				{#if title.mediaType === 'book' && !data.setupNeeded}
+					<button
+						type="button"
+						onclick={() => (pickingEdition = true)}
+						class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-surface-2/80 px-3 py-1 text-xs font-medium text-muted backdrop-blur hover:text-fg"
+					>
+						<BookCopy class="size-3.5" />
+						{data.edition
+							? [data.edition.publisher, data.edition.year].filter(Boolean).join(' · ') ||
+								'Change edition'
+							: 'Choose your edition'}
+						<span class="text-accent">· Change</span>
+					</button>
+					<EditionPicker
+						bind:open={pickingEdition}
+						work={title.ref.id}
+						editions={data.editions}
+						current={data.edition?.id ?? null}
+						chosen={data.editionChosen}
+					/>
 				{/if}
 				<p class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg/80">
 					{#if title.rating}
@@ -562,6 +585,9 @@
 						>
 							{overviewExpanded ? 'Less' : 'More'}
 						</button>
+					{/if}
+					{#if !data.setupNeeded && data.overviewNote}
+						<p class="mt-2 text-xs text-muted">{data.overviewNote}</p>
 					{/if}
 				</div>
 			{/if}

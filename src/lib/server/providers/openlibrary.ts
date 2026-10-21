@@ -212,22 +212,34 @@ export interface VolumeInfo {
 	year: number | null;
 	/** Edition shown (in the requested language), digits. */
 	edition: string | null;
+	/** Whether title and cover come from an edition in the requested language. */
+	inLanguage: boolean;
 }
+
+type EditionDoc = {
+	key: string;
+	title?: string;
+	cover_i?: number;
+	number_of_pages?: number;
+	language?: string[];
+};
 
 /**
  * Cover, page count and (with `language`) the localized edition title for many works at once:
- * one request for a whole series.
+ * one request for a whole series. Open Library's `lang` only prefers editions in that language, so
+ * the edition is used only when it really is in it.
  */
 export async function volumeInfo(
 	workIds: string[],
 	language?: BookLanguage
 ): Promise<Map<string, VolumeInfo>> {
 	const result = new Map<string, VolumeInfo>();
+	const marc = BOOK_LANGUAGES.find((l) => l.id === language)?.marc;
 	for (let i = 0; i < workIds.length; i += 40) {
 		const batch = workIds.slice(i, i + 40);
 		const params = new URLSearchParams({
 			q: `key:(${batch.map((id) => `/works/OL${id}W`).join(' OR ')})`,
-			fields: `${FIELDS},editions,editions.key,editions.title,editions.cover_i,editions.number_of_pages`,
+			fields: `${FIELDS},editions,editions.key,editions.title,editions.cover_i,editions.number_of_pages,editions.language`,
 			limit: String(batch.length)
 		});
 		if (language) params.set('lang', language);
@@ -235,20 +247,99 @@ export async function volumeInfo(
 		for (const doc of data.docs) {
 			const id = workId(doc.key);
 			if (!id) continue;
-			const edition = doc.editions?.docs[0] as
-				{ key: string; title?: string; cover_i?: number; number_of_pages?: number } | undefined;
-			// Only trust the edition when it's in the requested language.
-			const useEdition = language && edition?.title;
+			const edition = doc.editions?.docs[0] as EditionDoc | undefined;
+			const inLanguage = !!marc && !!edition?.title && !!edition.language?.includes(marc);
 			result.set(id, {
-				title: (useEdition ? edition!.title : null) ?? doc.title,
-				cover: coverImage((useEdition ? edition!.cover_i : null) ?? doc.cover_i),
-				pages: (useEdition ? edition!.number_of_pages : null) ?? doc.number_of_pages_median ?? null,
+				title: (inLanguage ? edition!.title : null) ?? doc.title,
+				cover: coverImage((inLanguage ? edition!.cover_i : null) ?? doc.cover_i),
+				pages: (inLanguage ? edition!.number_of_pages : null) ?? doc.number_of_pages_median ?? null,
 				year: doc.first_publish_year ?? null,
-				edition: useEdition && edition ? editionId(edition.key) : null
+				edition: inLanguage && edition ? editionId(edition.key) : null,
+				inLanguage
 			});
 		}
 	}
 	return result;
+}
+
+/** The work an edition belongs to (Wikidata sometimes links an edition instead of the work). */
+export async function workOfEdition(edition: string): Promise<string | null> {
+	const data = await get<{ works?: { key: string }[] }>(`/books/OL${edition}M.json`);
+	return data.works?.[0] ? workId(data.works[0].key) : null;
+}
+
+/** A work with this title and an edition in `language` (to replace a duplicate without one). */
+export async function findWorkInLanguage(
+	title: string,
+	author: string | null,
+	language: BookLanguage
+): Promise<string | null> {
+	const marc = BOOK_LANGUAGES.find((l) => l.id === language)?.marc;
+	if (!marc) return null;
+	const quote = (text: string) => `"${text.replace(/"/g, '')}"`;
+	const q = [`title:${quote(title)}`, author ? `author:${quote(author)}` : '', `language:${marc}`]
+		.filter(Boolean)
+		.join(' ');
+	const data = await get<{ docs: { key: string }[] }>(
+		`/search.json?${new URLSearchParams({ q, fields: 'key', limit: '1' })}`
+	);
+	return data.docs[0] ? workId(data.docs[0].key) : null;
+}
+
+/** One edition of a work, for choosing which one you read (and its cover). */
+export interface EditionSummary {
+	id: string;
+	title: string;
+	/** MARC codes, e.g. ["fre"]. */
+	languages: string[];
+	cover: Image | null;
+	publisher: string | null;
+	year: string | null;
+	pages: number | null;
+	isbn: string | null;
+	description: string | null;
+	/** "Paperback", "Audio CD", "ebook"… */
+	format: string | null;
+}
+
+interface RawEdition {
+	key: string;
+	title?: string;
+	languages?: { key: string }[];
+	covers?: number[];
+	publishers?: string[];
+	publish_date?: string;
+	number_of_pages?: number;
+	isbn_13?: string[];
+	isbn_10?: string[];
+	description?: string | { value: string };
+	physical_format?: string;
+}
+
+/** Every edition of a work (up to 1000), most useful first: with a cover, then newest. */
+export async function workEditions(work: string): Promise<EditionSummary[]> {
+	const data = await get<{ entries: RawEdition[] }>(`${workKey(work)}/editions.json?limit=1000`);
+	return data.entries
+		.map((e): EditionSummary | null => {
+			const id = editionId(e.key);
+			if (!id || !e.title) return null;
+			return {
+				id,
+				title: e.title,
+				languages: (e.languages ?? []).map((l) => l.key.replace('/languages/', '')),
+				cover: coverImage(e.covers?.find((c) => c > 0)),
+				publisher: e.publishers?.[0] ?? null,
+				year: e.publish_date?.match(/\d{4}/)?.[0] ?? null,
+				pages: e.number_of_pages ?? null,
+				isbn: e.isbn_13?.[0] ?? e.isbn_10?.[0] ?? null,
+				description: description(e.description),
+				format: e.physical_format ?? null
+			};
+		})
+		.filter((e): e is EditionSummary => e !== null)
+		.sort(
+			(a, b) => Number(!a.cover) - Number(!b.cover) || (b.year ?? '').localeCompare(a.year ?? '')
+		);
 }
 
 /** The work and edition for an ISBN (10 or 13 digits), for barcode scanning. */

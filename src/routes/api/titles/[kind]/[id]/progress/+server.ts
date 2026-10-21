@@ -7,6 +7,7 @@ import {
 	parseTitleParams,
 	requireUser
 } from '$lib/server/api';
+import { readLocale } from '$lib/server/services/adaptations';
 import { rememberEdition } from '$lib/server/services/books';
 import { getEntry, getUserTitleState, setStatus } from '$lib/server/services/library';
 import { setReadingProgress, setVolumeProgress } from '$lib/server/services/tracking';
@@ -28,7 +29,12 @@ export const PUT: RequestHandler = async ({ locals, params, request, url }) => {
 		const title = await ensureTitleFor(user, kind, id);
 		// The edition is stored on the library entry and decides the page count, so it comes first.
 		if (!getEntry(user.id, title.id)) setStatus(user.id, title.id, 'planned');
-		await rememberEdition(user.id, title.id, url.searchParams.get('edition'));
+		await rememberEdition(
+			user.id,
+			title.id,
+			url.searchParams.get('edition'),
+			readLocale(user.prefs).language
+		);
 		const { finished } =
 			season !== undefined && number !== undefined
 				? setVolumeProgress(user.id, title, { season, number }, page, user.prefs)

@@ -2,7 +2,15 @@ import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { LIBRARY_STATUSES } from '$lib/media-types/types';
 import { getDb } from '../db/client';
-import { activityEvents, episodes, importJobs, libraryEntries, titles, users } from '../db/schema';
+import {
+	activityEvents,
+	episodes,
+	importJobs,
+	libraryEntries,
+	titles,
+	userEditions,
+	users
+} from '../db/schema';
 import { restoreCollection } from './book-series';
 import { ensureTitle } from './titles';
 
@@ -60,7 +68,20 @@ export const exportSchema = z.object({
 			source: z.string(),
 			isRepeat: z.boolean()
 		})
-	)
+	),
+	// Book editions chosen by the reader (title, cover, pages shown for them).
+	editions: z
+		.array(
+			z.object({
+				work: z.string().regex(/^\d+$/),
+				editionId: z.string(),
+				title: z.string(),
+				cover: z.object({ url: z.string(), srcset: z.string().optional() }).nullable(),
+				pages: z.number().int().nullable(),
+				language: z.string().nullable()
+			})
+		)
+		.optional()
 });
 
 export type EpisodicExport = z.infer<typeof exportSchema>;
@@ -136,7 +157,20 @@ export function exportUserData(userId: number): EpisodicExport {
 		exportedAt: new Date().toISOString(),
 		user: { username: user.username, displayName: user.displayName, prefs: { ...user.prefs } },
 		library,
-		activity
+		activity,
+		editions: db
+			.select()
+			.from(userEditions)
+			.where(eq(userEditions.userId, userId))
+			.all()
+			.map((e) => ({
+				work: e.work,
+				editionId: e.editionId,
+				title: e.title,
+				cover: e.cover ?? null,
+				pages: e.pages,
+				language: e.language
+			}))
 	};
 }
 
@@ -221,6 +255,12 @@ export async function runImport(
 			}
 			done++;
 			update({ doneTitles: done, addedEntries, addedEvents, skipped });
+		}
+		for (const e of data.editions ?? []) {
+			db.insert(userEditions)
+				.values({ userId, ...e, updatedAt: new Date() })
+				.onConflictDoNothing()
+				.run();
 		}
 		update({ status: 'done', finishedAt: new Date(), skipped });
 	} catch (error) {

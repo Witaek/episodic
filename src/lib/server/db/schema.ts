@@ -53,6 +53,22 @@ export const animeMappings = sqliteTable(
 );
 
 /**
+ * Tracking actions made offline and replayed by a device, by the id the device gave them: a retry
+ * after a dropped connection is recognized and not applied twice.
+ */
+export const clientActions = sqliteTable(
+	'client_actions',
+	{
+		userId: integer('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		actionId: text('action_id').notNull(),
+		createdAt: timestamp('created_at').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.actionId] })]
+);
+
+/**
  * The edition each reader chose for a book (Open Library work): its title, cover and page count
  * are shown everywhere for that reader, including inside a series.
  */

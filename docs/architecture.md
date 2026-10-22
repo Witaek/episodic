@@ -80,9 +80,18 @@ the types in `src/lib/catalog/types.ts`.
 - `src/service-worker.ts` (SvelteKit's built-in service worker):
   - precaches the app shell (JS, CSS, fonts, icons) per version;
   - pages and their `__data.json` are network-first, falling back to the last copy cached on the
-    device (up to 40), then to `static/offline.html`;
-  - posters and backdrops are cache-first (up to 400);
+    device (up to 80; the same page with other parameters will do), then to `static/offline.html`;
+  - posters, backdrops and covers are cache-first (up to 400);
+  - Home and Reading ask it to save the pages of what you're watching and reading ahead of time
+    (`src/lib/offline/presave.ts`, at most hourly per page);
   - `/api/*` always goes to the network.
+- **Offline tracking** (`src/lib/offline/`): a tracking call that fails for lack of connection is
+  kept in an IndexedDB outbox (`outbox.ts`) and the page updates locally (`TitleTracker`). The app
+  replays the outbox in order when back online, on reopening, every minute while changes wait, and
+  through background sync in the service worker where supported (`sync.svelte.ts`). Each replay
+  carries `x-episodic-action` (an id the server applies once, `client_actions`),
+  `x-episodic-user` (refused for another signed-in account) and `x-episodic-time` (for "most
+  recent change wins" on page and status) — see `src/lib/server/offline-sync.ts`.
 - Signing out deletes the cached pages (`clearCachedPages` in `src/lib/pwa.svelte.ts`).
 - The theme (System, Dark or Light) is stored in a cookie, so the server renders the right one with
   no flash. `hooks.server.ts` fills `%episodic.theme%` in `app.html`.

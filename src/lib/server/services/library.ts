@@ -75,6 +75,17 @@ export function removeEntry(userId: number, titleId: number): void {
 		.run();
 }
 
+/** When the page in `progress` was set (by the device's clock), for "most recent wins". */
+export function markPageSaved(userId: number, titleId: number, at: Date): void {
+	const entry = getEntry(userId, titleId);
+	if (!entry) return;
+	getDb()
+		.update(libraryEntries)
+		.set({ progress: { ...(entry.progress ?? {}), pageSavedAt: at.getTime() } })
+		.where(eq(libraryEntries.id, entry.id))
+		.run();
+}
+
 export function touchEntry(userId: number, titleId: number, at = new Date()): void {
 	getDb()
 		.update(libraryEntries)

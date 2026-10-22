@@ -5,10 +5,14 @@
 	import { onMount } from 'svelte';
 	import AppNav from '$lib/components/AppNav.svelte';
 	import { listenForInstallPrompt } from '$lib/pwa.svelte';
+	import { startOfflineSync } from '$lib/offline/sync.svelte';
+	import SyncChip from '$lib/components/SyncChip.svelte';
 
 	let { data, children } = $props();
 
 	onMount(listenForInstallPrompt);
+	// Sends changes made offline once the server is reachable again.
+	onMount(() => startOfflineSync(data.userId));
 
 	// Watch or Read: from the page, or (shared pages) the side you came from.
 	const section = $derived(sectionFor(page.url, data.remembered));
@@ -40,6 +44,7 @@
 {/if}
 
 <AppNav {section} />
+<SyncChip />
 
 <div class="min-h-dvh pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0 lg:pl-60">
 	{@render children()}

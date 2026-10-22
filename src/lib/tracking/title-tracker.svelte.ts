@@ -5,17 +5,26 @@ import {
 	type LibraryStatus,
 	type ProgressUnit
 } from '$lib/media-types/types';
+import { offline } from '$lib/offline/sync.svelte';
 import {
 	haptic,
+	isQueued,
 	markUnwatched,
 	markWatched,
 	removeFromLibrary,
 	setLibraryStatus,
 	setReadingPage,
 	undoEvents,
+	type Queued,
 	type TitleRefLike
 } from './client';
-import { MOVIE_KEY, episodeKey, type TitleUserState, type WatchTarget } from './types';
+import {
+	MOVIE_KEY,
+	episodeKey,
+	type EpisodeBrief,
+	type TitleUserState,
+	type WatchTarget
+} from './types';
 
 export interface Wording {
 	formatUnit: (unit: ProgressUnit) => string;
@@ -62,6 +71,18 @@ export class TitleTracker {
 		this.state = initial;
 	}
 
+	/**
+	 * Units listed on the page (the season shown), so offline changes can move "next up" and mark
+	 * a whole season locally.
+	 */
+	knownUnits: EpisodeBrief[] = [];
+
+	setKnownUnits(units: EpisodeBrief[]) {
+		this.knownUnits = [...units].sort(
+			(a, b) => a.seasonNumber - b.seasonNumber || a.number - b.number
+		);
+	}
+
 	plays(season: number, number: number): number {
 		return this.state.watched[episodeKey(season, number)] ?? 0;
 	}
@@ -74,7 +95,14 @@ export class TitleTracker {
 		const previous = this.state.status;
 		this.state.status = status;
 		try {
-			this.state = (await setLibraryStatus(this.ref, status)).state;
+			const result = await setLibraryStatus(this.ref, status, this.statusLabels[status]);
+			if (isQueued(result)) {
+				this.savedOffline(`Moved to ${this.statusLabels[status]}`, result, () => {
+					this.state.status = previous;
+				});
+				return;
+			}
+			this.state = result.state;
 			const label = previous
 				? `Moved to ${this.statusLabels[status]}`
 				: `Added to ${this.statusLabels[status]}`;
@@ -99,7 +127,14 @@ export class TitleTracker {
 		const previous = this.state.status;
 		this.state.status = null;
 		try {
-			this.state = (await removeFromLibrary(this.ref)).state;
+			const result = await removeFromLibrary(this.ref);
+			if (isQueued(result)) {
+				this.savedOffline('Removed from your library', result, () => {
+					this.state.status = previous;
+				});
+				return;
+			}
+			this.state = result.state;
 			toast('Removed from your library', {
 				description: 'Your watch history is kept.',
 				action: previous
@@ -128,7 +163,15 @@ export class TitleTracker {
 		this.applyOptimistic(target, +1);
 		haptic();
 		try {
-			const result = await markWatched(this.ref, target, options);
+			const offlineLabel = this.describe(target, 1, options.rewatch);
+			const result = await markWatched(this.ref, target, { ...options, label: offlineLabel });
+			if (isQueued(result)) {
+				this.applyOffline(target);
+				this.savedOffline(offlineLabel, result, () => {
+					this.state = snapshot;
+				});
+				return;
+			}
 			this.state = result.state;
 			if (result.eventIds.length === 0) {
 				toast('Already watched', { description: 'Use "Watch again" to log a rewatch.' });
@@ -172,6 +215,12 @@ export class TitleTracker {
 		this.state.reading = { page, pages: this.state.reading?.pages ?? null, unit: unit ?? null };
 		try {
 			const result = await setReadingPage(this.ref, page, unit);
+			if (isQueued(result)) {
+				this.savedOffline(`Page ${page}`, result, () => {
+					this.state = previous;
+				});
+				return;
+			}
 			this.state = result.state;
 			if (result.finished) toast.success('Finished! Marked as read');
 			else toast.success(`Saved: page ${page}`);
@@ -184,11 +233,81 @@ export class TitleTracker {
 		const snapshot = $state.snapshot(this.state);
 		this.applyOptimistic(target, -1);
 		try {
-			this.state = (await markUnwatched(this.ref, target)).state;
+			const result = await markUnwatched(this.ref, target, message);
+			if (isQueued(result)) {
+				this.applyOffline(target, -1);
+				this.savedOffline(message, result, () => {
+					this.state = snapshot;
+				});
+				return;
+			}
+			this.state = result.state;
 			toast(message);
 		} catch {
 			this.state = snapshot;
 		}
+	}
+
+	/** "Saved offline" toast, with an Undo that drops the waiting change. */
+	private savedOffline(label: string, queued: Queued, revert: () => void) {
+		toast(label, {
+			description: 'Saved on this device. It will sync when you are back online.',
+			action: queued.actionId
+				? {
+						label: 'Undo',
+						onClick: () => {
+							void offline.discard(queued.actionId!);
+							revert();
+						}
+					}
+				: undefined
+		});
+	}
+
+	/**
+	 * Offline, the server can't recompute progress: mark what the page knows locally (a season,
+	 * everything up to an episode) and move "next up" along the listed units.
+	 */
+	private applyOffline(target: WatchTarget, delta: 1 | -1 = 1) {
+		const units = this.knownUnits;
+		const keys =
+			target.type === 'season'
+				? units.filter((u) => u.seasonNumber === target.season)
+				: target.type === 'upTo'
+					? units.filter(
+							(u) =>
+								u.seasonNumber < target.season ||
+								(u.seasonNumber === target.season && u.number <= target.number)
+						)
+					: target.type === 'all'
+						? units
+						: [];
+		for (const unit of keys) {
+			const key = episodeKey(unit.seasonNumber, unit.number);
+			if (delta > 0) this.state.watched[key] ??= 1;
+			else delete this.state.watched[key];
+		}
+		const progress = this.state.progress;
+		if (!progress || units.length === 0) return;
+		const today = new Date().toISOString().slice(0, 10);
+		const next = units.find(
+			(u) =>
+				u.seasonNumber > 0 &&
+				!this.state.watched[episodeKey(u.seasonNumber, u.number)] &&
+				(!u.airDate || u.airDate <= today)
+		);
+		const watched = units.filter((u) => this.state.watched[episodeKey(u.seasonNumber, u.number)]);
+		this.state.progress = {
+			...progress,
+			nextUp: next ?? null,
+			watched: Math.max(progress.watched, Math.min(progress.aired, watched.length)),
+			percent: progress.aired
+				? Math.min(
+						100,
+						Math.round((Math.max(progress.watched, watched.length) / progress.aired) * 100)
+					)
+				: progress.percent
+		};
 	}
 
 	private describe(target: WatchTarget, count: number, rewatch?: boolean): string {

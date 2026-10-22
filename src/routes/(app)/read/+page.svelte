@@ -8,10 +8,20 @@
 	import ReadingCard from '$lib/components/ReadingCard.svelte';
 	import SectionSwitch from '$lib/components/SectionSwitch.svelte';
 	import { mediaType } from '$lib/media-types/registry';
-	import { haptic, markWatched, undoEvents } from '$lib/tracking/client';
+	import { presave } from '$lib/offline/presave';
+	import { offline } from '$lib/offline/sync.svelte';
+	import { haptic, isQueued, markWatched, undoEvents } from '$lib/tracking/client';
 	import type { LibraryItem, WatchTarget } from '$lib/tracking/types';
 
 	let { data } = $props();
+
+	// What you're in the middle of opens (and can be tracked) without a connection.
+	$effect(() => {
+		void presave([
+			{ href: '/read' },
+			...data.reading.map((item) => ({ href: item.href, image: item.poster?.url ?? null }))
+		]);
+	});
 
 	// Cards update in place after each tap; reset when the page data reloads.
 	let reading = $derived(data.reading);
@@ -52,7 +62,35 @@
 			: null;
 		const original = item;
 		try {
-			const result = await markWatched({ kind: item.kind, id: item.externalId }, target);
+			const label = unit ? `${unit} read` : 'read';
+			const result = await markWatched(
+				{ kind: item.kind, id: item.externalId, name: item.name },
+				target,
+				{ label }
+			);
+			const restore = () => {
+				reading = reading.some((i) => i.titleId === original.titleId)
+					? reading.map((i) => (i.titleId === original.titleId ? original : i))
+					: [original, ...reading];
+			};
+			if (isQueued(result)) {
+				// Offline: a finished book leaves; for a series or manga, the next unit is known
+				// only after syncing, so the card steps aside too.
+				reading = reading.filter((i) => i.titleId !== item.titleId);
+				toast(item.mediaType === 'book' ? `Finished ${item.name}` : label, {
+					description: `${item.mediaType === 'book' ? '' : `${item.name} · `}saved offline, it will sync later`,
+					action: result.actionId
+						? {
+								label: 'Undo',
+								onClick: () => {
+									void offline.discard(result.actionId!);
+									restore();
+								}
+							}
+						: undefined
+				});
+				return;
+			}
 			const progress = result.state.progress;
 			const done = item.mediaType === 'book' || !progress?.nextUp;
 			reading = done
@@ -69,9 +107,7 @@
 					label: 'Undo',
 					onClick: async () => {
 						await undoEvents(result.eventIds);
-						reading = reading.some((i) => i.titleId === original.titleId)
-							? reading.map((i) => (i.titleId === original.titleId ? original : i))
-							: [original, ...reading];
+						restore();
 						if (finishedUnit) goal = { ...goal, done: Math.max(goal.done - 1, 0) };
 					}
 				}

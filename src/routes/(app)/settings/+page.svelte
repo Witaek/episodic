@@ -10,6 +10,8 @@
 	import InstallApp from '$lib/components/InstallApp.svelte';
 	import SegmentedControl from '$lib/components/SegmentedControl.svelte';
 	import { clearCachedPages } from '$lib/pwa.svelte';
+	import { offline } from '$lib/offline/sync.svelte';
+	import OfflineSection from '$lib/components/OfflineSection.svelte';
 	import type { Theme } from '$lib/theme';
 	import SettingsSection from '$lib/components/SettingsSection.svelte';
 	import { formatDateTime } from '$lib/format';
@@ -64,7 +66,23 @@
 					: ''}
 			</p>
 		</div>
-		<form method="POST" action="/logout" onsubmit={() => void clearCachedPages()}>
+		<form
+			method="POST"
+			action="/logout"
+			onsubmit={(event) => {
+				const n = offline.count;
+				if (
+					n &&
+					!confirm(
+						`${n} change${n === 1 ? '' : 's'} made offline ${n === 1 ? "hasn't" : "haven't"} synced yet. They stay on this device and sync when you sign in again. Sign out?`
+					)
+				) {
+					event.preventDefault();
+					return;
+				}
+				void clearCachedPages();
+			}}
+		>
 			<Button type="submit" variant="secondary" size="sm"><LogOut class="size-4" /> Sign out</Button
 			>
 		</form>
@@ -204,6 +222,10 @@
 				/>
 			</label>
 		</form>
+	</SettingsSection>
+
+	<SettingsSection title="Offline">
+		<OfflineSection />
 	</SettingsSection>
 
 	<SettingsSection title="Notifications">

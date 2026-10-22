@@ -9,7 +9,13 @@ import {
 } from '$lib/server/api';
 import { readLocale } from '$lib/server/services/adaptations';
 import { rememberEdition } from '$lib/server/services/books';
-import { getEntry, getUserTitleState, setStatus } from '$lib/server/services/library';
+import {
+	getEntry,
+	getUserTitleState,
+	markPageSaved,
+	setStatus
+} from '$lib/server/services/library';
+import { clientTime } from '$lib/server/offline-sync';
 import { setReadingProgress, setVolumeProgress } from '$lib/server/services/tracking';
 import type { RequestHandler } from './$types';
 
@@ -35,10 +41,17 @@ export const PUT: RequestHandler = async ({ locals, params, request, url }) => {
 			url.searchParams.get('edition'),
 			readLocale(user.prefs).language
 		);
+		// A page replayed from an offline device loses to a newer one saved elsewhere.
+		const madeAt = clientTime(request) ?? new Date();
+		const savedAt = Number(getEntry(user.id, title.id)?.progress?.pageSavedAt ?? 0);
+		if (savedAt > madeAt.getTime()) {
+			return json({ finished: false, state: getUserTitleState(user.id, title, user.prefs) });
+		}
 		const { finished } =
 			season !== undefined && number !== undefined
 				? setVolumeProgress(user.id, title, { season, number }, page, user.prefs)
 				: setReadingProgress(user.id, title, page, user.prefs);
+		markPageSaved(user.id, title.id, madeAt);
 		return json({ finished, state: getUserTitleState(user.id, title, user.prefs) });
 	});
 };

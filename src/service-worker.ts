@@ -3,6 +3,7 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 import { build, files, version } from '$service-worker';
+import { flush, listQueued } from '$lib/offline/outbox';
 
 /**
  * Offline support:
@@ -10,16 +11,24 @@ import { build, files, version } from '$service-worker';
  * - pages and their data are network-first, falling back to the last copy seen on this device,
  *   then to offline.html;
  * - posters and backdrops are cache-first, with a size cap;
- * - API calls always go to the network.
+ * - API calls always go to the network; tracking done offline waits in an outbox (IndexedDB) and
+ *   is replayed by the app, or here through background sync where supported (Android);
+ * - the app asks for the pages of what you're watching and reading to be saved ahead of time.
  */
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
 const SHELL = `shell-${version}`;
 const PAGES = 'pages-v1';
 const IMAGES = 'images-v1';
-const MAX_PAGES = 40;
+const MAX_PAGES = 80;
 const MAX_IMAGES = 400;
-const IMAGE_HOSTS = ['image.tmdb.org', 's4.anilist.co', 'img.anili.st'];
+const IMAGE_HOSTS = [
+	'image.tmdb.org',
+	's4.anilist.co',
+	'img.anili.st',
+	'covers.openlibrary.org',
+	'uploads.mangadex.org'
+];
 
 const shellAssets = [...build, ...files.filter((f) => !f.endsWith('.DS_Store'))];
 
@@ -60,7 +69,9 @@ async function networkFirst(request: Request): Promise<Response> {
 		}
 		return response;
 	} catch {
-		const cached = await cache.match(request);
+		// The same page with other parameters (?season=, SvelteKit's data flags) beats nothing.
+		const cached =
+			(await cache.match(request)) ?? (await cache.match(request, { ignoreSearch: true }));
 		if (cached) return cached;
 		if (request.mode === 'navigate') {
 			const offline = await caches.match('/offline.html');
@@ -105,10 +116,54 @@ sw.addEventListener('fetch', (event) => {
 	}
 });
 
-// Sent by the app when signing out, so the next person on this device doesn't see cached pages.
+/** Saves pages (and their data for in-app navigation) and images for use offline. */
+async function presave(paths: string[], images: string[]) {
+	const cache = await caches.open(PAGES);
+	for (const path of paths) {
+		const data = `${path === '/' ? '' : path}/__data.json`;
+		for (const url of [path, data]) {
+			try {
+				const response = await fetch(url, { credentials: 'same-origin' });
+				if (response.ok && !response.redirected) await cache.put(url, response);
+			} catch {
+				return; // Offline again: try next time.
+			}
+		}
+	}
+	void trim(PAGES, MAX_PAGES);
+	for (const image of images) {
+		await cacheFirstImage(new Request(image, { mode: 'no-cors' })).catch(() => {});
+	}
+}
+
 sw.addEventListener('message', (event) => {
+	// Sent by the app when signing out, so the next person on this device doesn't see cached pages.
 	if (event.data === 'clear-user-data') event.waitUntil(caches.delete(PAGES));
+	const message = event.data as { type?: string; paths?: string[]; images?: string[] } | null;
+	if (message?.type === 'presave') {
+		event.waitUntil(presave(message.paths ?? [], message.images ?? []));
+	}
 });
+
+// ---------- Offline tracking: background sync (Android) ----------
+
+sw.addEventListener('sync', ((
+	event: Event & { tag: string; waitUntil(p: Promise<unknown>): void }
+) => {
+	if (event.tag !== 'episodic-outbox') return;
+	event.waitUntil(
+		(async () => {
+			const people = [...new Set((await listQueued()).map((a) => a.userId))];
+			let remaining = 0;
+			for (const userId of people) remaining += (await flush(userId)).remaining;
+			for (const client of await sw.clients.matchAll({ type: 'window' })) {
+				client.postMessage('outbox-synced');
+			}
+			// Still waiting (offline again): the browser retries the sync later.
+			if (remaining) throw new Error('Changes still waiting');
+		})()
+	);
+}) as EventListener);
 
 // ---------- Push notifications ----------
 

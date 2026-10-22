@@ -8,7 +8,8 @@ import {
 	parseTitleParams,
 	requireUser
 } from '$lib/server/api';
-import { getUserTitleState, removeEntry, setStatus } from '$lib/server/services/library';
+import { getEntry, getUserTitleState, removeEntry, setStatus } from '$lib/server/services/library';
+import { clientTime } from '$lib/server/offline-sync';
 import { readLocale } from '$lib/server/services/adaptations';
 import { rememberEdition } from '$lib/server/services/books';
 import { findTitle } from '$lib/server/services/titles';
@@ -23,7 +24,10 @@ export const PUT: RequestHandler = async ({ locals, params, request, url }) => {
 	const { status } = await parseBody(request, body);
 	return handleErrors(async () => {
 		const title = await ensureTitleFor(user, kind, id);
-		setStatus(user.id, title.id, status);
+		// A status replayed from an offline device loses to a newer change made elsewhere.
+		const madeAt = clientTime(request);
+		const entry = getEntry(user.id, title.id);
+		if (!madeAt || !entry || entry.updatedAt <= madeAt) setStatus(user.id, title.id, status);
 		await rememberEdition(
 			user.id,
 			title.id,

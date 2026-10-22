@@ -71,8 +71,12 @@ Episodic then opens full-screen from its own icon, like a native app. **Settings
 app** shows the right steps for the device you're on, and an **Install** button where the browser
 supports one.
 
-The installed app keeps working offline for pages you opened recently, and shows an _offline_
-screen for the rest. Marking episodes needs a connection.
+The installed app keeps working offline for pages you opened recently, and for the shows, books
+and manga you're in the middle of (saved ahead of time from Home and Reading). You can mark
+episodes, books and chapters, update your page or change a status without a connection: a chip
+shows "N changes waiting to sync", and they're sent once Episodic is reachable again (in the
+background on Android, the next time you open the app on iPhone). **Settings → Offline** lists them.
+Search and anything new still needs a connection.
 
 ## Troubleshooting
 

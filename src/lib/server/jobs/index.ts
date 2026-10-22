@@ -1,6 +1,7 @@
 import { lt } from 'drizzle-orm';
 import { purgeExpiredSessions } from '../auth';
 import { purgeExpiredCache } from '../cache';
+import { purgeClientActions } from '../offline-sync';
 import { getDb } from '../db/client';
 import { jobRuns } from '../db/schema';
 import { mappingsAge, refreshAnimeMappings } from '../providers/anime-mapping';
@@ -62,6 +63,7 @@ export const jobs: JobDefinition[] = [
 		async run() {
 			const cache = purgeExpiredCache();
 			const sessions = purgeExpiredSessions();
+			purgeClientActions();
 			const runs = getDb()
 				.delete(jobRuns)
 				.where(lt(jobRuns.startedAt, new Date(Date.now() - 30 * DAY)))

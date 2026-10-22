@@ -9,10 +9,20 @@
 	import SetupNotice from '$lib/components/SetupNotice.svelte';
 	import UpNextCard from '$lib/components/UpNextCard.svelte';
 	import { formatEpisodeCode } from '$lib/media-types/types';
-	import { haptic, markWatched, undoEvents } from '$lib/tracking/client';
+	import { presave } from '$lib/offline/presave';
+	import { offline } from '$lib/offline/sync.svelte';
+	import { haptic, isQueued, markWatched, undoEvents } from '$lib/tracking/client';
 	import type { LibraryItem } from '$lib/tracking/types';
 
 	let { data } = $props();
+
+	// What you're in the middle of opens (and can be tracked) without a connection.
+	$effect(() => {
+		void presave([
+			{ href: '/' },
+			...data.upNext.map((item) => ({ href: item.href, image: item.poster?.url ?? null }))
+		]);
+	});
 
 	// Cards update in place after each tap; reset when the page data reloads.
 	let upNext = $derived(data.upNext);
@@ -61,11 +71,36 @@
 		const code = formatEpisodeCode({ season: next.seasonNumber, number: next.number });
 		try {
 			const result = await markWatched(
-				{ kind: item.kind, id: item.externalId },
-				{ type: 'episode', season: next.seasonNumber, number: next.number }
+				{ kind: item.kind, id: item.externalId, name: item.name },
+				{ type: 'episode', season: next.seasonNumber, number: next.number },
+				{ label: `${code} watched` }
 			);
-			const progress = result.state.progress;
 			const original = item;
+			const restore = () => {
+				if (upNext.some((i) => i.titleId === original.titleId)) {
+					replace(original.titleId, () => original);
+				} else {
+					upNext = [original, ...upNext];
+				}
+			};
+			if (isQueued(result)) {
+				// Offline: the next episode is unknown until it syncs, so the card steps aside.
+				replace(item.titleId, () => null);
+				toast(`${code} watched`, {
+					description: `${item.name} · saved offline, it will sync later`,
+					action: result.actionId
+						? {
+								label: 'Undo',
+								onClick: () => {
+									void offline.discard(result.actionId!);
+									restore();
+								}
+							}
+						: undefined
+				});
+				return;
+			}
+			const progress = result.state.progress;
 			replace(item.titleId, (current) => (progress?.nextUp ? { ...current, progress } : null));
 			toast.success(progress?.nextUp ? `${code} watched` : `You're up to date with ${item.name}`, {
 				description: progress?.nextUp ? item.name : undefined,
@@ -73,11 +108,7 @@
 					label: 'Undo',
 					onClick: async () => {
 						await undoEvents(result.eventIds);
-						if (upNext.some((i) => i.titleId === original.titleId)) {
-							replace(original.titleId, () => original);
-						} else {
-							upNext = [original, ...upNext];
-						}
+						restore();
 					}
 				}
 			});

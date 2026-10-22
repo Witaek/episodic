@@ -13,6 +13,7 @@ import { closeDb, runMigrations } from '$lib/server/db/client';
 import { startJobs } from '$lib/server/jobs';
 import { stopJobs } from '$lib/server/jobs/scheduler';
 import { compress } from '$lib/server/compression';
+import { onceForReplay } from '$lib/server/offline-sync';
 import { isRequestOriginAllowed } from '$lib/server/security';
 import { THEME_COLORS, THEME_COOKIE, parseTheme } from '$lib/theme';
 import { SECTION_COOKIE, parseSection, sectionFor } from '$lib/section';
@@ -86,6 +87,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const target = path + event.url.search;
 		redirect(303, target === '/' ? '/login' : `/login?redirectTo=${encodeURIComponent(target)}`);
 	}
+
+	// Tracking replayed from a device that was offline: applied once, by the right account.
+	if (isApi) return compress(event.request, await onceForReplay(event, () => resolve(event)));
 
 	const theme = parseTheme(event.cookies.get(THEME_COOKIE));
 	const remembered = parseSection(event.cookies.get(SECTION_COOKIE));

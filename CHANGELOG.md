@@ -5,6 +5,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-21
+
+### Added
+
+- **Offline tracking.** Without a connection (metro, plane, Tailscale off), marking episodes,
+  books and chapters, updating your page or changing a status still works: changes are kept on the
+  phone, a chip shows how many are waiting, and they sync once Episodic is reachable again. History
+  keeps the time you tapped. Each change is applied once, even if a sync is retried, and never to
+  another account signed in on the same device; for your page and statuses, the most recent change
+  wins. Undo works on changes still waiting. **Settings → Offline** lists them, with Sync now and
+  Discard.
+- The shows, books and manga you're in the middle of are saved ahead of time, so they open offline
+  even if you didn't visit them recently. Open Library and MangaDex covers are cached too.
+
 ## [2.2.0] - 2026-10-21
 
 Books in your language, and the cover you own.

@@ -2,7 +2,8 @@
 	import { untrack } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { formatRuntime } from '$lib/format';
-	import { haptic, markUnwatched, markWatched, undoEvents } from '$lib/tracking/client';
+	import { offline } from '$lib/offline/sync.svelte';
+	import { haptic, isQueued, markUnwatched, markWatched, undoEvents } from '$lib/tracking/client';
 	import Img from './Img.svelte';
 	import WatchButton from './WatchButton.svelte';
 
@@ -25,18 +26,35 @@
 	});
 
 	async function toggle(movie: FranchiseMovieItem) {
-		const ref = { kind: 'movie' as const, id: movie.id };
+		const ref = { kind: 'movie' as const, id: movie.id, name: movie.name };
 		const before = movie.plays;
 		haptic();
 		try {
 			if (before > 0) {
 				movie.plays = before - 1;
-				const { state } = await markUnwatched(ref, { type: 'movie' });
-				movie.plays = state.watched.movie ?? 0;
-				toast(`${movie.name} marked unwatched`);
+				const result = await markUnwatched(ref, { type: 'movie' }, 'marked unwatched');
+				if (!isQueued(result)) movie.plays = result.state.watched.movie ?? 0;
+				toast(`${movie.name} marked unwatched`, {
+					description: isQueued(result) ? 'Saved offline, it will sync later.' : undefined
+				});
 			} else {
 				movie.plays = 1;
-				const result = await markWatched(ref, { type: 'movie' });
+				const result = await markWatched(ref, { type: 'movie' }, { label: 'watched' });
+				if (isQueued(result)) {
+					toast(`${movie.name} watched`, {
+						description: 'Saved offline, it will sync later.',
+						action: result.actionId
+							? {
+									label: 'Undo',
+									onClick: () => {
+										void offline.discard(result.actionId!);
+										movie.plays = before;
+									}
+								}
+							: undefined
+					});
+					return;
+				}
 				movie.plays = result.state.watched.movie ?? 1;
 				toast.success(`${movie.name} watched`, {
 					action: {

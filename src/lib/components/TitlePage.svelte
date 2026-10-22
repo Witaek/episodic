@@ -44,7 +44,7 @@
 	import { isReadType } from '$lib/catalog/types';
 	import { formatEpisodeCode } from '$lib/media-types/types';
 	import { readingWording, TitleTracker, VIDEO_WORDING } from '$lib/tracking/title-tracker.svelte';
-	import { EMPTY_STATE, type WatchTarget } from '$lib/tracking/types';
+	import { EMPTY_STATE, type EpisodeBrief, type WatchTarget } from '$lib/tracking/types';
 
 	let { data }: { data: TitlePageData } = $props();
 
@@ -73,14 +73,33 @@
 	const unitWords = $derived(
 		title?.mediaType === 'manga' ? (['chapter', 'chapters'] as const) : (['book', 'books'] as const)
 	);
+	// Offline, the tracker moves "next up" along the episodes of the season on screen.
+	$effect(() => {
+		const current = tracker;
+		if (!current || data.setupNeeded) return;
+		void data.season.then((season) => {
+			if (season) current.setKnownUnits(season.episodes.map(toBrief));
+		});
+	});
+	const toBrief = (e: Episode): EpisodeBrief => ({
+		id: 0,
+		seasonNumber: e.seasonNumber,
+		number: e.number,
+		name: e.name,
+		airDate: e.airDate,
+		airAt: e.airAt ?? null,
+		still: e.still,
+		runtime: e.runtime
+	});
 	const tracker = $derived(
 		title && trackDefinition
 			? new TitleTracker(
 					inSeries
-						? { kind: inSeries.kind, id: inSeries.id }
+						? { kind: inSeries.kind, id: inSeries.id, name: inSeries.name }
 						: {
 								kind: title.ref.kind,
 								id: title.ref.id,
+								name: title.name,
 								edition: data.setupNeeded ? null : (data.edition?.id ?? null)
 							},
 					inSeries ? inSeries.state : data.setupNeeded ? EMPTY_STATE : data.state,
